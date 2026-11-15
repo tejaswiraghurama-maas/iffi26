@@ -158,6 +158,9 @@ table.tbl{width:100%;border-collapse:collapse;font-size:16px}
 .guest [data-v=watchlist],.guest [data-v=watched],.guest .statusbar,.guest .acts,.guest #addBtn,.guest .mineonly{display:none!important}
 .guestonly{display:none}.guest .guestonly{display:block}
 #signinBtn{display:none}.guest #signinBtn{display:inline-block}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-left:auto}
+.seg button{background:var(--card);border:0;padding:6px 12px;font-size:18px;line-height:1;cursor:pointer;color:var(--muted)}
+.seg button.on{background:var(--text);color:#fff}
 </style>
 </head>
 <body class="guest">
@@ -166,7 +169,6 @@ table.tbl{width:100%;border-collapse:collapse;font-size:16px}
     <div class="logo">IFFI Diary</div>
     <nav id="tabs">
       <button data-v="all" class="on">Films<span class="n" id="n-all">0</span></button>
-      <button data-v="list">List</button>
       <button data-v="rec">Recommended</button>
       <button data-v="schedule">Schedule<span class="n" id="n-schedule">0</span></button>
       <button data-v="watchlist">Watchlist<span class="n" id="n-watchlist">0</span></button>
@@ -260,8 +262,9 @@ function matches(m){
 /* ---------- state + routing ---------- */
 const state = { view: 'all', q:'', showPast:false, onlyMine:false, venue:'', section:'', tag:'', sort:'next' };
 try{ Object.assign(state, JSON.parse(localStorage.getItem(KEY+'-ui')||'{}'), {q:'', view:'all'}); }catch(e){}
+function setLayout(l){ state.layout=l; persistUI(); render(); }
 function setView(v){ state.view=v; persistUI(); render(); }
-function persistUI(){ try{ localStorage.setItem(KEY+'-ui', JSON.stringify({view:state.view,showPast:state.showPast,onlyMine:state.onlyMine,sort:state.sort})); }catch(e){} }
+function persistUI(){ try{ localStorage.setItem(KEY+'-ui', JSON.stringify({view:state.view,showPast:state.showPast,onlyMine:state.onlyMine,sort:state.sort,layout:state.layout})); }catch(e){} }
 
 $('#tabs').onclick = e => { const b=e.target.closest('button'); if(b) setView(b.dataset.v); };
 $('#q').oninput = e => { state.q = e.target.value; render(); };
@@ -282,7 +285,7 @@ function render(){
   $('#n-watchlist').textContent = db.movies.filter(m=>m.status==='want').length;
   $('#n-watched').textContent = db.movies.filter(m=>m.status==='watched').length;
   $('#n-all').textContent = db.movies.length;
-  const v = {schedule:renderSchedule, watchlist:()=>renderGrid('want'), watched:()=>renderGrid('watched'), all:()=>renderGrid('all'), list:renderList, rec:()=>renderGrid('rec'), stats:renderStats}[state.view] || (()=>renderGrid('all'));
+  const v = {schedule:renderSchedule, watchlist:()=>renderGrid('want'), watched:()=>renderGrid('watched'), all:()=>renderGrid('all'), list:()=>{state.view='all';state.layout='list';return renderGrid('all');}, rec:()=>renderGrid('rec'), stats:renderStats}[state.view] || (()=>renderGrid('all'));
   $('#main').innerHTML = v(); tick();
 }
 
@@ -385,11 +388,13 @@ function renderGrid(kind){
   if(kind==='rec') list.sort((a,b)=>a.recRank-b.recRank);
   const opts = (kind==='watched' ? [['watchedOn','Recently watched'],['rating','Highest rated'],['title','Title'],['added','Recently added']] : [['next','Next showtime'],['title','Title'],['added','Recently added'],['rating','Rating']])
     .map(([v,l])=>`<option value="${v}" ${sort===v?'selected':''}>Sort: ${l}</option>`).join('');
-  let html = filterBar(kind==='rec' ? `<span style="color:var(--muted);font-size:15px">Recommended online · ${list.length} films, in order</span>` : `<select onchange="state.sort=this.value;persistUI();render()">${opts}</select>`);
+  const seg = `<span class="seg"><button class="${state.layout!=='list'?'on':''}" title="Thumbnails" aria-label="Thumbnails" onclick="setLayout('grid')">▦</button><button class="${state.layout==='list'?'on':''}" title="List" aria-label="List" onclick="setLayout('list')">☰</button></span>`;
+  let html = filterBar((kind==='rec' ? `<span style="color:var(--muted);font-size:15px">Recommended online · ${list.length} films, in order</span>` : `<select onchange="state.sort=this.value;state.lsort='';persistUI();render()">${opts}</select>`) + seg);
   if(!list.length){
     const msg = {want:['Nothing on your watchlist','Add films you want to catch — tap the + button.'], watched:['No films logged yet','When you watch something, mark it watched and give it a rating.'], all:['No films yet','Start by adding a film from the IFFI line-up.'], rec:['No recommended films','Tap ⋯ → Load official IFFI 2026 films to get the recommended list.']}[kind];
     return html + `<div class="empty"><h3>${msg[0]}</h3>${msg[1]}</div>`;
   }
+  if(state.layout==='list') return html + tableHtml(list, kind);
   html += `<div class="grid">` + list.map(m => {
     const ns = nextScreening(m);
     const sub = m.status==='watched'
@@ -416,13 +421,12 @@ function listRows(){
     .sort((a,b) => { const x=lval(a,k), y=lval(b,k); return (typeof x==='number' ? x-y : String(x).localeCompare(String(y))) * dir || a.title.localeCompare(b.title); });
 }
 function sortList(k){ state.ldir = state.lsort===k ? -(state.ldir||1) : 1; state.lsort = k; render(); }
-function renderList(){
-  const rows = listRows(), k = state.lsort||'title', dir = state.ldir||1;
-  let html = filterBar(`<span style="color:var(--muted);font-size:15px">${rows.length} film${rows.length===1?'':'s'}</span><span class="spacer"></span><button class="btn sm" onclick="downloadCSV()">Download CSV</button>`);
-  if(!rows.length) return html + `<div class="empty"><h3>No films match</h3>Try clearing the search or filters.</div>`;
-  html += `<div class="tblwrap"><table class="tbl"><thead><tr>${LCOLS.map(([c,l,h])=>`<th class="${h||''}" onclick="sortList('${c}')">${l}${k===c?(dir>0?' ↑':' ↓'):''}</th>`).join('')}</tr></thead><tbody>`;
+function tableHtml(rows, kind){
+  const k = state.lsort, dir = state.ldir||1;
+  if(k) rows = [...rows].sort((a,b) => { const x=lval(a,k), y=lval(b,k); return (typeof x==='number' ? x-y : String(x).localeCompare(String(y))) * dir || a.title.localeCompare(b.title); });
+  let html = `<div class="tblwrap"><table class="tbl"><thead><tr>${LCOLS.map(([c,l,h])=>`<th class="${h||''}" onclick="sortList('${c}')">${l}${k===c?(dir>0?' ↑':' ↓'):''}</th>`).join('')}</tr></thead><tbody>`;
   html += rows.map(m => `<tr onclick="openDetail('${m.id}')">
-    <td class="t">${esc(m.title)}${m.originalTitle?`<div style="font-weight:400;color:var(--muted);font-size:14px">${esc(m.originalTitle)}</div>`:''}</td>
+    <td class="t">${kind==='rec'?`<span style="color:var(--muted)">#${m.recRank}</span> `:''}${esc(m.title)}${m.originalTitle?`<div style="font-weight:400;color:var(--muted);font-size:14px">${esc(m.originalTitle)}</div>`:''}</td>
     <td class="m">${esc(m.genre||'')}${m.genreUnverified?' <span title="Best guess – not verified" style="color:var(--muted)">?</span>':''}</td><td class="hm">${esc(m.director)}</td><td class="hm" title="${esc(m.country)}">${(()=>{ const c=String(m.country||'').split(',').map(x=>x.trim()).filter(Boolean); return esc(c.slice(0,2).join(', '))+(c.length>2?` <span style="color:var(--muted)">+${c.length-2}</span>`:''); })()}</td><td class="hm m">${esc(m.language)}</td><td class="hm m">${esc(m.year)}</td>
     <td>${esc(m.section)}</td><td class="hm m">${esc(m.premiere||'')}</td>
     <td style="color:var(--green)">${confirmInfo(m)?'Confirmed':''}</td><td class="m">${statusLabel(m)}</td></tr>`).join('');
