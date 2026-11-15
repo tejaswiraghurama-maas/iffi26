@@ -155,9 +155,12 @@ table.tbl{width:100%;border-collapse:collapse;font-size:16px}
   .sedit{grid-template-columns:1fr 1fr}
   .hero .poster{width:70px}.hero .cd{font-size:22px}
 }
+.guest [data-v=watchlist],.guest [data-v=watched],.guest .statusbar,.guest .acts,.guest #addBtn,.guest .mineonly{display:none!important}
+.guestonly{display:none}.guest .guestonly{display:block}
+#signinBtn{display:none}.guest #signinBtn{display:inline-block}
 </style>
 </head>
-<body>
+<body class="guest">
 <header>
   <div class="bar">
     <div class="logo">IFFI Diary</div>
@@ -171,6 +174,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:16px}
     </nav>
     <div class="spacer"></div>
     <input class="search" id="q" placeholder="Search films, directors…">
+    <button class="btn primary" id="signinBtn" onclick="cloudToggle()">Sign in</button>
     <button class="btn primary" id="addBtn">+ Add film</button>
     <div class="menu" id="menu">
       <button class="btn" id="menuBtn">⋯</button>
@@ -304,7 +308,7 @@ function renderSchedule(){
   const n = now(), cl = clashes();
   let items = allScreenings().filter(x => x.m.status!=='watched' || x.start<n);
   items = items.filter(x => matches(x.m) && tagOK(x.m) && (!state.venue || x.s.venue===state.venue) && (!state.section || x.m.section===state.section));
-  if(state.onlyMine) items = items.filter(x => x.s.booked || x.s.going);
+  if(state.onlyMine && cloud.user) items = items.filter(x => x.s.booked || x.s.going);
   if(!state.showPast) items = items.filter(x => x.end > n);
   else items = items.filter(x => x.m.status!=='watched' || x.start<n);
 
@@ -312,7 +316,7 @@ function renderSchedule(){
   const next = upcomingMine[0] || allScreenings().find(x => x.start>n && x.m.status==='want');
 
   let html = filterBar(`
-    <label><input type="checkbox" ${state.onlyMine?'checked':''} onchange="state.onlyMine=this.checked;persistUI();render()"> Only my plan (going / booked)</label>
+    <label class="mineonly"><input type="checkbox" ${state.onlyMine?'checked':''} onchange="state.onlyMine=this.checked;persistUI();render()"> Only my plan (going / booked)</label>
     <label><input type="checkbox" ${state.showPast?'checked':''} onchange="state.showPast=this.checked;persistUI();render()"> Show past shows</label>`);
 
   if(next && !state.q){
@@ -523,6 +527,7 @@ function openDetail(id){
       ${ratingsBlock(m)}
     </div>
   </div>
+  <div class="guestonly" style="background:var(--bg2);border-radius:10px;padding:14px;margin:12px 0;text-align:center;font-size:16px">Sign in to add films to your watchlist, mark them watched and rate them.<br><button class="btn primary" style="margin-top:10px" onclick="closeModal();cloudToggle()">Sign in with Google</button></div>
   <div class="statusbar">
     <div class="sbtn want ${m.status==='want'?'on':''}" onclick="setStatus('${m.id}','want')">${m.status==='want'?'✓ On watchlist':'+ Watchlist'}</div>
     <div class="sbtn watched ${m.status==='watched'?'on':''}" onclick="setStatus('${m.id}','watched')">${m.status==='watched'?'✓ Watched':'👁 Mark watched'}</div>
@@ -723,7 +728,7 @@ $('#file').onchange = async e => {
         const screenings = (m.screenings||[]).map(s=>({id:uid(),...s}));
         if(ex){
           ex.screenings = [...(ex.screenings||[]), ...screenings.filter(s=>!ex.screenings.some(o=>o.date===s.date&&o.time===s.time&&o.venue===s.venue))];
-          for(const k of ['originalTitle','genre','genreUnverified','recRank','director','country','language','year','runtime','section','synopsis','poster','link','cast','festivals','premiere']) if(!ex[k] && m[k]) ex[k]=m[k];
+          for(const k of ['notes','originalTitle','genre','genreUnverified','recRank','director','country','language','year','runtime','section','synopsis','poster','link','cast','festivals','premiere']) if(!ex[k] && m[k]) ex[k]=m[k];
           ex.tags = [...new Set([...(ex.tags||[]), ...(m.tags||[])])];
           ex.sources = [...(ex.sources||[]), ...(m.sources||[]).filter(x=>!(ex.sources||[]).some(o=>o.url===x.url))];
           if(m.confirmed?.on && !ex.confirmed?.on) ex.confirmed = m.confirmed;
@@ -783,7 +788,7 @@ function loadDemo(){
 /* ---------- online sync (optional Google sign-in) ---------- */
 const FB_CFG = {apiKey:"AIzaSyA6mBtRlKHFojWP46-KuL5AjdRmTR2TD-c",authDomain:"iffi26-8579d.firebaseapp.com",projectId:"iffi26-8579d",storageBucket:"iffi26-8579d.firebasestorage.app",messagingSenderId:"798581706323",appId:"1:798581706323:web:b4725dfb07f67087e440a6"};
 const FBV = 'https://www.gstatic.com/firebasejs/10.12.2/';
-const MARK_FIELDS = ['status','priority','rating','liked','review','watchedOn','notes'];
+const MARK_FIELDS = ['status','priority','rating','liked','review','watchedOn'];
 const cloud = {fb:null, user:null, ready:false, marks:{}, known:new Set(), unsub:null, t:null};
 const tkey = m => String(m.title||'').trim().toLowerCase();
 const skey = s => [s.date,s.time,s.venue].join('|');
@@ -829,6 +834,10 @@ save = function(){ _localSave(); if(cloud.user && cloud.ready) pushSoon(); };
 document.addEventListener('visibilitychange', ()=>{ if(document.hidden && cloud.t) pushNow(); });
 async function onUser(u){
   cloud.user=u; cloud.ready=false; if(cloud.unsub){ cloud.unsub(); cloud.unsub=null; }
+  if(!u){   // signed out: park any marks on this phone so they're hidden, and add them to the account at next sign-in
+    const park={}; for(const m of db.movies){ if(isOfficial(m)){ const e=localMark(m); if(e) park[tkey(m)]=e; } else park['custom:'+tkey(m)]=clean(m); }
+    if(Object.keys(park).length){ try{ const old=JSON.parse(localStorage.getItem(KEY+'-parked')||'{}'); localStorage.setItem(KEY+'-parked', JSON.stringify({...old,...park})); }catch(e){} clearLocalMarks(); }
+  }
   updateCloudMenu();
   if(!u) return;
   const {doc,getDoc,onSnapshot} = cloud.fb, ref = doc(cloud.fb.store,'users',u.uid);
@@ -836,7 +845,9 @@ async function onUser(u){
     const snap = await getDoc(ref), remote = snap.exists() ? snap.data() : {marks:{},custom:[]};
     const marks = {...(remote.marks||{})};
     for(const m of db.movies) if(isOfficial(m)){ const t=tkey(m), e=localMark(m); if(e && !marks[t]) marks[t]=e; }   // keep this phone's activity
+    let parked={}; try{ parked=JSON.parse(localStorage.getItem(KEY+'-parked')||'{}'); localStorage.removeItem(KEY+'-parked'); }catch(e){}
     const custom = [...(remote.custom||[])], have = new Set(custom.map(tkey));
+    for(const [k,v] of Object.entries(parked)){ if(k.startsWith('custom:')){ if(!have.has(tkey(v))){ custom.push(v); have.add(tkey(v)); } } else if(!marks[k]) marks[k]=v; }
     for(const m of db.movies) if(!isOfficial(m) && !have.has(tkey(m))) custom.push(clean(m));
     cloud.marks = {}; applyRemote({marks, custom}); cloud.ready = true;
     await pushNow();
@@ -844,7 +855,14 @@ async function onUser(u){
     toast('Signed in – your lists are saved online');
   }catch(e){ console.warn(e); toast('Could not reach online storage'); }
 }
+function clearLocalMarks(){
+  for(const m of db.movies) if(isOfficial(m)) setMark(m, null);
+  db.movies = db.movies.filter(isOfficial); cloud.marks={}; cloud.known=new Set(); _localSave();
+}
 function updateCloudMenu(){
+  document.body.classList.toggle('guest', !cloud.user);
+  if(!cloud.user && ['watchlist','watched'].includes(state.view)) state.view='all';
+  render();
   const b=$('#cloudBtn'); if(!b) return;
   b.textContent = cloud.user ? `Sign out (${cloud.user.email||cloud.user.displayName||'Google'})` : 'Sign in with Google to save online';
   const s=$('#cloudState'); if(s) s.textContent = cloud.user ? '☁️ Saved online' : '';
@@ -860,7 +878,7 @@ async function cloudInit(){
 async function cloudToggle(){
   if(!cloud.fb){ toast('Online sync not available right now'); return; }
   const {auth, GoogleAuthProvider, signInWithPopup, signOut} = cloud.fb;
-  if(cloud.user){ if(confirm('Sign out? Your lists stay saved online and on this phone.')){ await pushNow(); await signOut(auth); toast('Signed out'); } return; }
+  if(cloud.user){ if(confirm('Sign out? Your lists stay saved online and on this phone.')){ await pushNow(); await signOut(auth); clearLocalMarks(); render(); toast('Signed out'); } return; }
   const p = new GoogleAuthProvider();
   try{ await signInWithPopup(auth, p); }
   catch(e){ const c=e.code||'';
@@ -870,7 +888,7 @@ async function cloudToggle(){
 cloudInit();
 
 render();
-{ const t=document.getElementById('official')?.textContent||''; const ver=t.length+':'+((t.match(/"fetched":"([^"]*)"/)||[])[1]||'');
+{ const t=document.getElementById('official')?.textContent||''; const ver='2:'+t.length+':'+((t.match(/"fetched":"([^"]*)"/)||[])[1]||'');
   if(t && db.officialVer!==ver){ db.officialVer=ver; window._quiet=true; loadOfficial(); } }   // pick up film-list updates automatically
 </script>
 </body>
