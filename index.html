@@ -223,6 +223,53 @@ svg.ic{display:none;width:24px;height:24px;fill:none;stroke:currentColor;stroke-
   nav#tabs .lbl{white-space:nowrap}
   .filters{gap:8px;flex-wrap:nowrap}.filters .field{flex:1 1 0;width:0;min-width:0}.filters .field+.field{flex:0 0 auto;width:auto}
 }
+button.field{text-align:left;cursor:pointer;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+button.field.set{border-color:var(--text);font-weight:600}
+#sheet.picker{padding:0 0 env(safe-area-inset-bottom);max-height:72vh;display:flex;flex-direction:column}
+.pk-head{display:flex;align-items:center;justify-content:space-between;padding:14px 12px 10px 20px;border-bottom:1px solid var(--line);position:relative}
+#sheet.picker .pk-head::before{content:"";position:absolute;top:6px;left:50%;width:36px;height:4px;margin-left:-18px;border-radius:2px;background:#d0d0d0}
+.pk-head b{font-size:18px;margin-top:6px}
+.pk-x{background:none;border:0;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text)}
+.pk-x:hover{background:var(--bg2)}
+.pk-list{overflow-y:auto;padding:6px 0 10px;-webkit-overflow-scrolling:touch}
+.pk-opt{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;text-align:left;padding:13px 20px;font-size:17px;cursor:pointer;color:var(--text);min-height:50px}
+.pk-opt span{flex:1}.pk-opt small{color:var(--muted);font-size:14px}
+.pk-opt:hover{background:var(--bg2)}
+.pk-opt.on{font-weight:700}.pk-opt.on svg{color:var(--green);flex:none}
+@media (min-width:641px){
+  #sheet.picker{position:fixed;border-radius:12px;max-height:60vh;transform:none;opacity:0;visibility:hidden;transition:opacity .12s;box-shadow:0 10px 30px rgba(0,0,0,.18);border:1px solid var(--line)}
+  #sheet.picker.open{opacity:1;visibility:visible}
+  #sheet.picker .pk-head::before{display:none}
+  #sheet.picker .pk-head{padding:10px 8px 8px 16px}.pk-head b{margin-top:0;font-size:16px}
+  #sheet.picker .pk-opt{padding:10px 16px;font-size:16px;min-height:44px}
+}
+body:has(#sheet.picker.open) #sheetScrim{background:rgba(0,0,0,.3)}
+@media (min-width:641px){ body:has(#sheet.picker.open) #sheetScrim{background:transparent} }
+/* film page */
+.dhead{display:flex;gap:16px;align-items:flex-start;padding-right:28px}
+.dposter{width:120px;flex:none}
+.dinfo{flex:1;min-width:0}
+.dinfo h2{margin:0 0 4px;font-size:24px;line-height:1.2}
+.dmeta{color:var(--muted);font-size:15.5px;line-height:1.4;margin-top:2px}.dmeta b{color:var(--text);font-weight:600}
+.dsign{display:flex!important;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:14px 0 0;font-size:15.5px}
+body:not(.guest) .dsign{display:none!important}
+.statusbar{margin:14px 0 4px}
+.sbtn{display:flex;align-items:center;justify-content:center;gap:6px;font:inherit;font-weight:600;font-size:15px;color:var(--text);min-height:46px}
+.sbtn.on.want,.sbtn.on.watched{background:#e8f3ec;border-color:var(--green);color:var(--green)}
+.sbtn.on.prio{background:#fbf3df}
+.dsyn{margin-top:10px}
+.dsyn .syn{margin:0;font-size:16.5px;line-height:1.5}
+.dsyn .clamp{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.dsyn.open .clamp{display:block}
+.dextra{font-size:15px;color:var(--muted);margin-top:10px;display:flex;flex-direction:column;gap:6px}.dextra b{color:var(--text);font-weight:600}
+.dextra[hidden]{display:none}
+.rmore{font-size:15.5px;margin-top:4px;padding:6px 0;color:var(--text);text-decoration:underline}
+@media (max-width:640px){
+  .scrim{padding:0;align-items:flex-end}
+  .modal{border-radius:16px 16px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:92vh;overflow-y:auto;border:0}
+  .dposter{width:96px}.dinfo h2{font-size:21px}
+  .sbtn{min-width:0;padding:8px 4px;font-size:14px}
+}
 </style>
 </head>
 <body class="guest">
@@ -357,7 +404,8 @@ function filterBar(extra=''){
   const cnt={}; for(const m of db.movies){ const g=secGroup(m.section); if(g) cnt[g]=(cnt[g]||0)+1; }
   const groups=Object.keys(cnt).sort((a,b)=>a.localeCompare(b));
   if(state.section && !cnt[state.section]) state.section='';
-  return `<div class="filters"><select class="field" aria-label="Section" onchange="state.section=this.value;render()"><option value="">Sections</option>${groups.map(g=>`<option value="${esc(g)}" ${state.section===g?'selected':''}>${esc(g)} (${cnt[g]})</option>`).join('')}</select>${extra}</div>`;
+  filterBar._groups = groups.map(g=>[g, `${g}`, cnt[g]]);
+  return `<div class="filters"><button class="field ${state.section?'set':''}" aria-haspopup="dialog" onclick="pick(this,'Sections',[['','All sections',${db.movies.length}],...filterBar._groups],state.section,v=>{state.section=v;render();})">${esc(state.section||'Sections')}</button>${extra}</div>`;
 }
 
 function renderSchedule(){
@@ -447,10 +495,12 @@ function renderGrid(kind){
   if(kind==='watched' && sort==='next') sort='watchedOn';
   list.sort(sorts[sort]||sorts.next);
   if(kind==='rec') list.sort((a,b)=>a.recRank-b.recRank);
+  const sortOpts = (kind==='watched' ? [['watchedOn','Recently watched'],['rating','Highest rated'],['title','A–Z']] : [...(anyShows?[['next','Next showtime']]:[]),['title','A–Z'],...(cloud.user?[['rating','My rating']]:[])]);
+  if(!sortOpts.some(o=>o[0]===sort)) sort = sortOpts[0][0];
   const opts = (kind==='watched' ? [['watchedOn','Recently watched'],['rating','Highest rated'],['title','A–Z']] : [...(anyShows?[['next','Next showtime']]:[]),['title','A–Z'],...(cloud.user?[['rating','My rating']]:[])])
     .map(([v,l])=>`<option value="${v}" ${sort===v?'selected':''}>Sort: ${l}</option>`).join('');
   const seg = `<span class="seg"><button class="${state.layout!=='list'?'on':''}" title="Thumbnails" aria-label="Thumbnails" onclick="setLayout('grid')"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/></svg></button><button class="${state.layout==='list'?'on':''}" title="List" aria-label="List" onclick="setLayout('list')"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h14"/></svg></button></span>`;
-  let html = filterBar((kind==='rec' ? '' : `<select class="field" aria-label="Sort" onchange="state.sort=this.value;state.lsort='';persistUI();render()">${opts}</select>`) + seg);
+  let html = filterBar((kind==='rec' ? '' : `<button class="field" aria-haspopup="dialog" onclick='pick(this,"Sort by",${JSON.stringify(sortOpts).replace(/'/g,"&#39;")},${JSON.stringify(sort)},v=>{state.sort=v;state.lsort="";persistUI();render();})'>Sort: ${esc((sortOpts.find(o=>o[0]===sort)||sortOpts[0])[1])}</button>`) + seg);
   if(!list.length){
     const msg = {want:['Nothing on your watchlist','Add films you want to catch — tap the + button.'], watched:['No films logged yet','When you watch something, mark it watched and give it a rating.'], all:['No films yet','Start by adding a film from the IFFI line-up.'], rec:['No recommended films','Tap ⋯ → Load official IFFI 2026 films to get the recommended list.']}[kind];
     return html + `<div class="empty"><h3>${msg[0]}</h3>${msg[1]}</div>`;
@@ -577,26 +627,28 @@ function openDetail(id){
     const full = r>=i, half = !full && r>=i-.5;
     return `<span class="${full||half?'on':''}" title="Click: ${i} · Shift-click: ${i-.5}" onclick="setRating('${m.id}', event.shiftKey||event.altKey ? ${i-.5} : ${i})">${half?'⯪':'★'}</span>`;
   }).join('');
-  openModal(`<div class="detail">
-    <div>${poster(m)}</div>
-    <div style="flex:1;min-width:0">
-      <h2>${esc(m.title)} ${m.year?`<span style="color:var(--muted);font-weight:400;font-size:18px">${esc(m.year)}</span>`:''}</h2>
-      <div class="by">${m.director?'Directed by <b style="color:var(--text)">'+esc(m.director)+'</b>':''}${m.originalTitle?` · <i>${esc(m.originalTitle)}</i>`:''}</div>
-      <div>${m.genre?`<span class="tag sec">${esc(m.genre)}${m.genreUnverified?' <span title=\"Best guess – not verified\" style=\"color:var(--muted)\">?</span>':''}</span>`:''}${[m.country,m.language,m.runtime?m.runtime+' min':''].filter(Boolean).map(t=>`<span class="tag sec">${esc(t)}</span>`).join('')}</div>
-      ${confirmInfo(m)?`<div style="margin-top:6px"><span class="tag booked" style="text-transform:none;letter-spacing:0">✓ Screening confirmed</span></div>`:''}
-      ${m.cast?`<div style="font-size:15px;color:var(--muted);margin-top:8px"><b style="color:var(--text)">Cast:</b> ${esc(m.cast)}</div>`:''}
-      ${m.festivals?`<div style="font-size:15px;color:var(--muted);margin-top:4px"><b style="color:var(--text)">Festivals:</b> ${esc(m.festivals)}</div>`:''}
-      ${m.synopsis?`<p class="syn">${esc(m.synopsis)}</p>`:''}
-      ${m.notes?`<p style="color:var(--muted);font-size:15px">📝 ${esc(m.notes)}</p>`:''}
-      ${ratingsBlock(m)}
+  const cs = String(m.country||'').split(',').map(x=>x.trim()).filter(Boolean);
+  const meta = [m.genre, cs.length ? cs[0]+(cs.length>1?` +${cs.length-1}`:'') : '', m.language, m.year, m.runtime?m.runtime+' min':''].filter(Boolean).map(esc).join(' · ');
+  const extra = [m.originalTitle?`<div><b>Original title:</b> ${esc(m.originalTitle)}</div>`:'', cs.length>1?`<div><b>Countries:</b> ${esc(cs.join(', '))}</div>`:'', m.cast?`<div><b>Cast:</b> ${esc(m.cast)}</div>`:'', m.festivals?`<div><b>Festivals:</b> ${esc(String(m.festivals).replace(/\s*\|\s*/g,', '))}</div>`:'', m.notes?`<div>${esc(m.notes)}</div>`:''].join('');
+  const I = d => `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  openModal(`<div class="dhead">
+    <div class="dposter">${poster(m)}</div>
+    <div class="dinfo">
+      <h2>${esc(m.title)}</h2>
+      ${meta?`<div class="dmeta">${meta}</div>`:''}
+      ${m.director?`<div class="dmeta">Directed by <b>${esc(m.director)}</b></div>`:''}
+      ${m.section?`<div class="dmeta">${esc(m.section)}</div>`:''}
+      ${confirmInfo(m)?`<span class="tag booked" style="margin-top:6px">✓ Screening confirmed</span>`:''}
     </div>
   </div>
-  <div class="guestonly" style="background:var(--bg2);border-radius:10px;padding:14px;margin:12px 0;text-align:center;font-size:16px">Sign in to add films to your watchlist, mark them watched and rate them.<br><button class="btn primary" style="margin-top:10px" onclick="closeModal();cloudToggle()">Sign in with Google</button></div>
+  <div class="guestonly dsign"><span>Sign in to save this film</span><button class="btn primary sm" onclick="closeModal();cloudToggle()">Sign in</button></div>
   <div class="statusbar">
-    <div class="sbtn want ${m.status==='want'?'on':''}" onclick="setStatus('${m.id}','want')">${m.status==='want'?'✓ On watchlist':'+ Watchlist'}</div>
-    <div class="sbtn watched ${m.status==='watched'?'on':''}" onclick="setStatus('${m.id}','watched')">${m.status==='watched'?'✓ Watched':'👁 Mark watched'}</div>
-    <div class="sbtn prio ${m.priority?'on':''}" onclick="setStatus('${m.id}','priority')">${m.priority?'★ Must-see':'☆ Must-see'}</div>
+    <button class="sbtn want ${m.status==='want'?'on':''}" aria-pressed="${m.status==='want'}" onclick="setStatus('${m.id}','want')">${I(m.status==='want'?'<path d="M6.5 3.5h11v17l-5.5-4-5.5 4z" fill="currentColor"/>':'<path d="M6.5 3.5h11v17l-5.5-4-5.5 4z"/>')}<span>Watchlist</span></button>
+    <button class="sbtn watched ${m.status==='watched'?'on':''}" aria-pressed="${m.status==='watched'}" onclick="setStatus('${m.id}','watched')">${I('<circle cx="12" cy="12" r="8.5"/><path d="M8.4 12.3l2.5 2.5 4.7-4.9"/>')}<span>Watched</span></button>
+    <button class="sbtn prio ${m.priority?'on':''}" aria-pressed="${!!m.priority}" onclick="setStatus('${m.id}','priority')">${I(`<path d="M12 3.6l2.6 5.2 5.8.9-4.2 4.1 1 5.7L12 16.8l-5.2 2.7 1-5.7-4.2-4.1 5.8-.9z" ${m.priority?'fill="currentColor"':''}/>`)}<span>Must-see</span></button>
   </div>
+  ${m.synopsis||extra?`<div class="dsyn"><p class="syn clamp">${esc(m.synopsis||'')}</p><div class="dextra" hidden>${extra}</div><button class="linkbtn rmore" onclick="const d=this.parentNode;const o=d.classList.toggle('open');d.querySelector('.dextra').hidden=!o;this.textContent=o?'Show less':'Read more'">Read more</button></div>`:''}
+  ${ratingsBlock(m)}
   ${m.status==='watched' ? `<div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
       <div style="display:flex;align-items:center;gap:12px"><div class="rate">${starsHtml}</div><span style="font-size:24px;cursor:pointer;color:${m.liked?'var(--orange)':'#cfcfcf'}" onclick="toggleLike('${m.id}')" title="Like">♥</span></div>
@@ -605,7 +657,7 @@ function openDetail(id){
     <textarea placeholder="Write a quick review or thoughts…" style="width:100%;margin-top:10px;background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:8px;min-height:70px" oninput="saveReview('${m.id}',this.value)">${esc(m.review||'')}</textarea>
     <div style="font-size:13.5px;color:var(--muted)">Shift-click a star for a half star.</div>
   </div>` : ''}
-  <div style="font-weight:700;margin:6px 0 4px">Showtimes</div>
+  ${scr.length?'<div style="font-weight:700;margin:14px 0 4px">Showtimes</div>':''}
   <div>${scr.length ? scr.map(s=>{
     const st=dt(s), en=endOf(m,s), past=en<n;
     return `<div class="scr" style="${past?'opacity:.55':''}">
@@ -617,7 +669,7 @@ function openDetail(id){
       <div class="acts" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${past
         ? (m.status!=='watched'?`<button class="btn sm" onclick="quickWatched('${m.id}','${s.id}')">✓ Watched this</button>`:'')
         : `<button class="btn sm" onclick="toggleS('${m.id}','${s.id}','going')">${s.going?'✓ Going':'+ Going'}</button><button class="btn sm" onclick="toggleS('${m.id}','${s.id}','booked')">${s.booked?'🎟 Booked':'Book'}</button>`}</div>
-    </div>`;}).join('') : `<div style="color:var(--muted);font-size:14px;padding:6px 0">No showtimes added yet.</div>`}</div>
+    </div>`;}).join('') : ''}</div>
   `);
 }
 
@@ -997,7 +1049,21 @@ function peekHtml(m){
   document.addEventListener('contextmenu', e=>{ if(e.target.closest('[data-pid]')) e.preventDefault(); });
   $('#sheetScrim').onclick = ()=>closeSheet();
 })();
+function pick(btn, title, options, cur, onPick){
+  pick._fn = onPick;
+  const sh=$('#sheet');
+  sh.innerHTML = `<div class="pk-head"><b>${esc(title)}</b><button class="pk-x" aria-label="Close" onclick="closeSheet()"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="pk-list" role="listbox">${options.map(([v,l,c])=>`<button role="option" aria-selected="${v===cur}" class="pk-opt ${v===cur?'on':''}" data-v="${esc(v)}"><span>${esc(l)}</span>${c!=null?`<small>${c}</small>`:''}${v===cur?'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>':''}</button>`).join('')}</div>`;
+  sh.querySelectorAll('.pk-opt').forEach(b=>b.onclick=()=>{ const v=b.dataset.v; closeSheet(); pick._fn(v); });
+  sh.classList.add('picker');
+  if(innerWidth>640){ const r=btn.getBoundingClientRect(); Object.assign(sh.style,{left:Math.min(r.left, innerWidth-330)+'px', top:(r.bottom+6)+'px', right:'auto', bottom:'auto', width:'320px'}); }
+  else sh.removeAttribute('style');
+  sh.classList.add('open'); $('#sheetScrim').classList.add('open');
+  if(!history.state?.sheet) history.pushState({sheet:1},'');
+  setTimeout(()=>sh.querySelector('.pk-opt.on, .pk-opt')?.focus({preventScroll:false}), 50);
+}
 function openSheet(id){
+  $('#sheet').classList.remove('picker'); $('#sheet').removeAttribute('style');
   const m = find(id); if(!m) return;
   $('#sheet').innerHTML = peekHtml(m) + `<button class="btn primary" style="width:100%;padding:13px;font-size:17px" onclick="closeSheet('detail');openDetail('${m.id}')">Open film</button>`;
   $('#sheet').classList.add('open'); $('#sheetScrim').classList.add('open');
