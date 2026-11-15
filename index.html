@@ -168,7 +168,6 @@ table.tbl{width:100%;border-collapse:collapse;font-size:16px}
       <button data-v="schedule">Schedule<span class="n" id="n-schedule">0</span></button>
       <button data-v="watchlist">Watchlist<span class="n" id="n-watchlist">0</span></button>
       <button data-v="watched">Watched<span class="n" id="n-watched">0</span></button>
-      <button data-v="stats">Stats</button>
     </nav>
     <div class="spacer"></div>
     <input class="search" id="q" placeholder="Search films, directors…">
@@ -523,15 +522,12 @@ function openDetail(id){
       <h2>${esc(m.title)} ${m.year?`<span style="color:var(--muted);font-weight:400;font-size:18px">${esc(m.year)}</span>`:''}</h2>
       <div class="by">${m.director?'Directed by <b style="color:var(--text)">'+esc(m.director)+'</b>':''}${m.originalTitle?` · <i>${esc(m.originalTitle)}</i>`:''}</div>
       <div>${m.genre?`<span class="tag sec">${esc(m.genre)}${m.genreUnverified?' <span title=\"Best guess – not verified\" style=\"color:var(--muted)\">?</span>':''}</span>`:''}${[m.country,m.language,m.runtime?m.runtime+' min':''].filter(Boolean).map(t=>`<span class="tag sec">${esc(t)}</span>`).join('')}</div>
-      <div style="margin-top:6px">${(()=>{ const c=confirmInfo(m); return c?`<span class="tag booked" style="text-transform:none;letter-spacing:0">✓ Screening confirmed</span><span style="font-size:14px;margin-right:8px">${srcLink(c.source, c.label||'source')}</span>`:`<span class="tag sec" title="No source confirms a screening yet">Screening not yet confirmed</span>`; })()}
-        ${[...new Set([m.section,...(m.tags||[])].filter(Boolean))].map(t=>`<span class="tag plan" style="text-transform:none;letter-spacing:0;cursor:pointer" data-tag="${esc(t)}" onclick="state.tag=this.dataset.tag;closeModal();setView('all')">${esc(t)}</span>`).join('')}</div>
+      ${confirmInfo(m)?`<div style="margin-top:6px"><span class="tag booked" style="text-transform:none;letter-spacing:0">✓ Screening confirmed</span></div>`:''}
       ${m.cast?`<div style="font-size:15px;color:var(--muted);margin-top:8px"><b style="color:var(--text)">Cast:</b> ${esc(m.cast)}</div>`:''}
       ${m.festivals?`<div style="font-size:15px;color:var(--muted);margin-top:4px"><b style="color:var(--text)">Festivals:</b> ${esc(m.festivals)}</div>`:''}
       ${m.synopsis?`<p class="syn">${esc(m.synopsis)}</p>`:''}
       ${m.notes?`<p style="color:var(--muted);font-size:15px">📝 ${esc(m.notes)}</p>`:''}
-      ${m.link?`<p style="font-size:15px"><a href="${esc(m.link)}" target="_blank" rel="noopener">More info ↗</a></p>`:''}
       ${ratingsBlock(m)}
-      ${(m.sources||[]).length?`<div style="font-size:14px;color:var(--muted);margin-top:8px">Sources: ${m.sources.map(x=>x.url?srcLink(x.url,x.label):esc(x.label)).join(' · ')}</div>`:''}
     </div>
   </div>
   <div class="statusbar">
@@ -562,7 +558,6 @@ function openDetail(id){
     </div>`;}).join('') : `<div style="color:var(--muted);font-size:14px;padding:6px 0">No showtimes added yet.</div>`}</div>
   <div class="foot">
     <button class="btn danger" onclick="delMovie('${m.id}')">Delete</button>
-    <div style="display:flex;gap:8px"><button class="btn" onclick="openEdit('${m.id}')">Edit film &amp; showtimes</button></div>
   </div>`);
 }
 
@@ -654,13 +649,7 @@ function ratingsBlock(m){
     if(r.imdb) chips += chip('⭐','IMDb'+(r.imdbVotes?` · ${esc(r.imdbVotes)} votes`:''),r.imdb+'/10',`https://www.imdb.com/title/${esc(r.imdbID)}/`);
     if(r.mc) chips += chip('Ⓜ️','Metacritic',r.mc,`https://www.metacritic.com/search/${t}/`);
   }
-  const msg = !r ? (db.omdbKey ? 'Ratings not fetched yet.' : 'Add a free OMDb key to see IMDb, Rotten Tomatoes and Metacritic scores.')
-    : r.notFound ? 'No ratings found. New festival films often have none until they’re released. Add the IMDb ID in Edit if you know it.'
-    : `${chips ? '' : 'Found, but no scores yet. '}Matched <b>${esc(r.matched)}</b> · ${new Date(r.fetched).toLocaleDateString()}`;
-  return `<div class="ratings">${chips?`<div class="rrow">${chips}</div>`:''}
-    <div style="font-size:14px;color:var(--muted);margin-top:${chips?6:0}px">${msg}
-      <button class="linkbtn" onclick="fetchRatings('${m.id}')">${!db.omdbKey?'Set key':r?'Refresh':'Get ratings'}</button>
-      · Search <a href="https://www.rottentomatoes.com/search?search=${t}" target="_blank" rel="noopener">RT</a> · <a href="https://www.imdb.com/find/?q=${q}" target="_blank" rel="noopener">IMDb</a> · <a href="https://letterboxd.com/search/films/${t}/" target="_blank" rel="noopener">Letterboxd</a></div></div>`;
+  return chips ? `<div class="ratings"><div class="rrow">${chips}</div></div>` : '';
 }
 function setKey(cb){
   const k = prompt('Ratings come from OMDb (IMDb, Rotten Tomatoes, Metacritic).\nGet a free key at omdbapi.com/apikey.aspx (it arrives by email), then paste it here:', db.omdbKey||'');
