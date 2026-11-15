@@ -3,50 +3,51 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#141414">
+<meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="IFFI Diary">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23141414'/%3E%3Ctext x='50' y='66' font-size='46' text-anchor='middle' fill='%239ccfa8' font-family='Arial' font-weight='bold'%3EIF%3C/text%3E%3C/svg%3E">
 <title>IFFI Diary</title>
 <style>
 :root{
-  --bg:#141414; --bg2:#1b1b1b; --card:#232323; --line:#2c2c2c; --text:#ececec; --muted:#8e8e8e;
-  --green:#9ccfa8; --orange:#9ccfa8; --blue:#d4d4d4; --red:#e58a80; --gold:#e3c27a;
+  --bg:#ffffff; --bg2:#f5f5f3; --card:#ffffff; --line:#dedede; --text:#1d1d1f; --muted:#555a60;
+  --green:#1b7a44; --orange:#c2410c; --blue:#1d1d1f; --red:#b42318; --gold:#8a6100;
+  color-scheme: light;
   --radius:10px;
 }
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif}
+html,body{margin:0;background:var(--bg);color:var(--text);font:17px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif}
 button,input,select,textarea{font:inherit;color:inherit}
 a{color:var(--blue)}
-header{position:sticky;top:0;padding-top:env(safe-area-inset-top);z-index:20;background:rgba(20,24,28,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header{position:sticky;top:0;padding-top:env(safe-area-inset-top);z-index:20;background:rgba(255,255,255,.97);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 .bar{max-width:1180px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.logo{display:flex;align-items:center;gap:8px;font-weight:800;letter-spacing:.3px;font-size:19px}
+.logo{display:flex;align-items:center;gap:8px;font-weight:800;letter-spacing:.3px;font-size:21px}
 .dots{display:flex;gap:3px}.dots i{width:12px;height:12px;border-radius:50%;display:block}
 .dots i:nth-child(1){background:var(--orange)}.dots i:nth-child(2){background:var(--green)}.dots i:nth-child(3){background:var(--blue)}
 nav{display:flex;gap:4px;flex-wrap:wrap}
-nav button{background:none;border:0;padding:7px 12px;border-radius:999px;color:var(--muted);cursor:pointer;font-weight:600;font-size:14px}
-nav button.on{background:var(--card);color:var(--text)}
-nav button .n{font-size:11px;color:var(--muted);margin-left:5px;font-weight:500}
+nav button{background:none;border:0;padding:8px 14px;border-radius:999px;color:var(--muted);cursor:pointer;font-weight:600;font-size:16px}
+nav button.on{background:#1d1d1f;color:#fff}
+nav button .n{font-size:13px;color:var(--muted);margin-left:5px;font-weight:500}
 .spacer{flex:1}
-.search{background:var(--bg2);border:1px solid var(--line);border-radius:999px;padding:6px 14px;width:170px;outline:none}
+.search{background:var(--bg);border:1px solid #c9c9c9;border-radius:999px;padding:8px 16px;width:200px;outline:none;font-size:16px}
 .search:focus{border-color:var(--blue)}
-.btn{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:600;font-size:14px;white-space:nowrap}
+.btn{background:var(--card);border:1px solid #c9c9c9;border-radius:9px;padding:9px 14px;cursor:pointer;font-weight:600;font-size:15.5px;white-space:nowrap}
 .btn:hover{border-color:var(--muted)}
-.btn.primary{background:var(--green);border-color:var(--green);color:#0b1a12}
+.btn.primary{background:var(--green);border-color:var(--green);color:#fff}
 .btn.danger{color:var(--red)}
-.btn.sm{padding:4px 9px;font-size:12.5px}
+.btn.sm{padding:7px 12px;font-size:14.5px}
 main{max-width:1180px;margin:0 auto;padding:18px 16px 80px}
 .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
-.filters select,.filters label{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13.5px}
+.filters select,.filters label{background:var(--bg);border:1px solid #c9c9c9;border-radius:9px;padding:8px 12px;font-size:15px}
 .filters label{display:flex;gap:6px;align-items:center;cursor:pointer}
-h2.day{font-size:13px;font-weight:600;color:var(--muted);margin:26px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+h2.day{font-size:15px;font-weight:600;color:var(--muted);margin:26px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
 h2.day:first-child{margin-top:4px}
 /* hero */
 .hero{display:flex;gap:18px;background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:8px;align-items:center}
 .hero .poster{width:92px;flex:none}
-.hero .k{font-size:12px;color:var(--muted);font-weight:600}
+.hero .k{font-size:14px;color:var(--muted);font-weight:600}
 .hero h3{margin:2px 0 4px;font-size:22px}
 .hero .cd{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums}
 /* schedule rows */
@@ -55,40 +56,40 @@ h2.day:first-child{margin-top:4px}
 .row.past{opacity:.5}
 .row .time{width:74px;flex:none;text-align:center}
 .row .time b{display:block;font-size:18px;font-variant-numeric:tabular-nums}
-.row .time small{color:var(--muted);font-size:12px}
+.row .time small{color:var(--muted);font-size:14px}
 .row .mini{width:44px;flex:none}
 .row .info{flex:1;min-width:0}
 .row .t{font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.row .meta{color:var(--muted);font-size:13px}
+.row .meta{color:var(--muted);font-size:15px}
 .row .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-.tag{display:inline-block;font-size:11.5px;font-weight:500;padding:2px 8px;border-radius:5px;margin:0 4px 4px 0;background:rgba(255,255,255,.06);color:var(--text)}
-.tag.booked{background:rgba(156,207,168,.12);color:var(--green)}
-.tag.plan{background:rgba(255,255,255,.06);color:var(--text)}
-.tag.clash{background:rgba(229,138,128,.12);color:var(--red)}
-.tag.prio{background:rgba(227,194,122,.1);color:var(--gold)}
-.tag.sec{background:var(--line);color:var(--muted);text-transform:none;letter-spacing:0}
+.tag{display:inline-block;font-size:13.5px;font-weight:500;padding:3px 9px;border-radius:6px;margin:0 5px 5px 0;background:#efefed;color:var(--text)}
+.tag.booked{background:#e3f2e8;color:var(--green)}
+.tag.plan{background:#efefed;color:var(--text)}
+.tag.clash{background:#fdecea;color:var(--red)}
+.tag.prio{background:#fbf3df;color:var(--gold)}
+.tag.sec{background:#efefed;color:#3c4043;text-transform:none;letter-spacing:0}
 /* poster grid */
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:20px}
 .card{cursor:pointer;position:relative}
-.poster{aspect-ratio:2/3;border-radius:6px;overflow:hidden;background:var(--card);border:1px solid rgba(255,255,255,.08);position:relative;box-shadow:0 2px 10px rgba(0,0,0,.35)}
+.poster{aspect-ratio:2/3;border-radius:6px;overflow:hidden;background:var(--card);border:1px solid rgba(255,255,255,.08);position:relative;box-shadow:0 1px 6px rgba(0,0,0,.15)}
 .poster img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;z-index:1}
 .poster .ph{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:10px;font-weight:800;line-height:1.15;font-size:15px;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.5)}
-.poster .ph small{font-weight:500;opacity:.8;font-size:11px;margin-top:4px}
+.poster .ph small{font-weight:500;opacity:.8;font-size:13px;margin-top:4px}
 .card:hover .poster{outline:3px solid var(--green);outline-offset:-1px}
-.card .cap{font-size:13px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.card .sub{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:6px}
-.stars{color:var(--green);letter-spacing:1px;font-size:13px}
+.card .cap{font-size:16px;font-weight:600;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .sub{font-size:14px;color:var(--muted);display:flex;justify-content:space-between;gap:6px}
+.stars{color:var(--green);letter-spacing:1px;font-size:15px}
 .heart{color:var(--orange)}
-.badge-next{position:absolute;z-index:2;top:6px;left:6px;background:rgba(0,0,0,.75);font-size:11px;padding:2px 6px;border-radius:4px;font-weight:700}
+.badge-next{position:absolute;z-index:2;top:6px;left:6px;background:rgba(255,255,255,.95);box-shadow:0 1px 3px rgba(0,0,0,.25);font-size:13px;padding:2px 6px;border-radius:4px;font-weight:700}
 .empty{text-align:center;color:var(--muted);padding:60px 20px;border:1px dashed var(--line);border-radius:14px}
 .empty h3{color:var(--text);margin:0 0 6px}
 /* stats */
 .stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px}
 .stat{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:14px}
 .stat b{font-size:28px;display:block}
-.stat span{color:var(--muted);font-size:13px}
+.stat span{color:var(--muted);font-size:15px}
 /* modal */
-.scrim{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:flex-start;justify-content:center;z-index:50;overflow-y:auto;padding:30px 12px}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-start;justify-content:center;z-index:50;overflow-y:auto;padding:30px 12px}
 .scrim.open{display:flex}
 .modal{background:var(--bg2);border:1px solid var(--line);border-radius:14px;width:100%;max-width:760px;padding:20px;position:relative}
 .modal .x{position:absolute;top:10px;right:12px;background:none;border:0;font-size:24px;color:var(--muted);cursor:pointer}
@@ -96,34 +97,34 @@ h2.day:first-child{margin-top:4px}
 .detail .poster{width:170px;flex:none}
 .detail h2{margin:0;font-size:26px;line-height:1.15}
 .detail .by{color:var(--muted);margin:4px 0 10px}
-.detail p.syn{color:#c3ccd4}
+.detail p.syn{color:#2b2b2b;font-size:17px}
 .statusbar{display:flex;gap:8px;margin:12px 0;flex-wrap:wrap}
-.sbtn{flex:1;min-width:110px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px;cursor:pointer;text-align:center;font-weight:700;font-size:13px}
+.sbtn{flex:1;min-width:110px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px;cursor:pointer;text-align:center;font-weight:700;font-size:15px}
 .sbtn.on.want{border-color:var(--blue);color:var(--blue)}
 .sbtn.on.watched{border-color:var(--green);color:var(--green)}
 .sbtn.on.prio{border-color:var(--gold);color:var(--gold)}
 .rate{display:flex;gap:2px;font-size:26px;cursor:pointer;user-select:none}
-.rate span{color:#3c4752}.rate span.on{color:var(--green)}
+.rate span{color:#cfcfcf}.rate span.on{color:var(--green)}
 .scr{display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid var(--line);padding:9px 0}
 .scr:first-child{border-top:0}
 form .g{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-form label{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:4px;font-weight:600}
+form label{display:flex;flex-direction:column;font-size:14px;color:var(--muted);gap:4px;font-weight:600}
 form input,form select,form textarea{background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-size:14px;outline:none;width:100%}
 form input:focus,form select:focus,form textarea:focus{border-color:var(--blue)}
 form .full{grid-column:1/-1}
 .sedit{display:grid;grid-template-columns:130px 95px 1fr 100px 60px 1fr auto;gap:6px;align-items:center;margin-bottom:6px}
-.sedit input,.sedit select{padding:6px 8px;font-size:13px}
-.sedit .chk{display:flex;flex-direction:row;align-items:center;gap:4px;font-size:12px;color:var(--text)}
+.sedit input,.sedit select{padding:6px 8px;font-size:15px}
+.sedit .chk{display:flex;flex-direction:row;align-items:center;gap:4px;font-size:14px;color:var(--text)}
 .sedit .chk input{width:auto}
 .foot{display:flex;justify-content:space-between;gap:8px;margin-top:16px;flex-wrap:wrap}
 .ratings{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:10px}
 .rrow{display:flex;gap:8px;flex-wrap:wrap}
 .rchip{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px;text-decoration:none;color:var(--text)}
 .rchip:hover{border-color:var(--muted)}
-.rchip b{font-size:17px}.rchip small{color:var(--muted);font-size:11.5px}
-.linkbtn{background:none;border:0;color:var(--blue);cursor:pointer;padding:0;font-size:12px;font-weight:600}
-table.tbl{width:100%;border-collapse:collapse;font-size:14px}
-.tbl th{text-align:left;color:var(--muted);font-weight:600;font-size:12px;padding:8px 10px;border-bottom:1px solid var(--line);cursor:pointer;white-space:nowrap;user-select:none}
+.rchip b{font-size:17px}.rchip small{color:var(--muted);font-size:13.5px}
+.linkbtn{background:none;border:0;color:var(--blue);cursor:pointer;padding:0;font-size:14px;font-weight:600}
+table.tbl{width:100%;border-collapse:collapse;font-size:16px}
+.tbl th{text-align:left;color:var(--muted);font-weight:600;font-size:14px;padding:8px 10px;border-bottom:1px solid var(--line);cursor:pointer;white-space:nowrap;user-select:none}
 .tbl th:hover{color:var(--text)}
 .tbl td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
 .tbl td.t{font-weight:600}
@@ -161,11 +162,11 @@ table.tbl{width:100%;border-collapse:collapse;font-size:14px}
   <div class="bar">
     <div class="logo">IFFI Diary</div>
     <nav id="tabs">
-      <button data-v="schedule" class="on">Schedule<span class="n" id="n-schedule">0</span></button>
+      <button data-v="all" class="on">Films<span class="n" id="n-all">0</span></button>
+      <button data-v="list">List</button>
+      <button data-v="schedule">Schedule<span class="n" id="n-schedule">0</span></button>
       <button data-v="watchlist">Watchlist<span class="n" id="n-watchlist">0</span></button>
       <button data-v="watched">Watched<span class="n" id="n-watched">0</span></button>
-      <button data-v="all">Films<span class="n" id="n-all">0</span></button>
-      <button data-v="list">List</button>
       <button data-v="stats">Stats</button>
     </nav>
     <div class="spacer"></div>
@@ -261,8 +262,8 @@ function matches(m){
 }
 
 /* ---------- state + routing ---------- */
-const state = { view: 'schedule', q:'', showPast:false, onlyMine:false, venue:'', section:'', tag:'', sort:'next' };
-try{ Object.assign(state, JSON.parse(localStorage.getItem(KEY+'-ui')||'{}'), {q:''}); }catch(e){}
+const state = { view: 'all', q:'', showPast:false, onlyMine:false, venue:'', section:'', tag:'', sort:'next' };
+try{ Object.assign(state, JSON.parse(localStorage.getItem(KEY+'-ui')||'{}'), {q:'', view:'all'}); }catch(e){}
 function setView(v){ state.view=v; persistUI(); render(); }
 function persistUI(){ try{ localStorage.setItem(KEY+'-ui', JSON.stringify({view:state.view,showPast:state.showPast,onlyMine:state.onlyMine,sort:state.sort})); }catch(e){} }
 
@@ -286,7 +287,7 @@ function render(){
   $('#n-watchlist').textContent = db.movies.filter(m=>m.status==='want').length;
   $('#n-watched').textContent = db.movies.filter(m=>m.status==='watched').length;
   $('#n-all').textContent = db.movies.length;
-  const v = {schedule:renderSchedule, watchlist:()=>renderGrid('want'), watched:()=>renderGrid('watched'), all:()=>renderGrid('all'), list:renderList, stats:renderStats}[state.view] || renderSchedule;
+  const v = {schedule:renderSchedule, watchlist:()=>renderGrid('want'), watched:()=>renderGrid('watched'), all:()=>renderGrid('all'), list:renderList, stats:renderStats}[state.view] || (()=>renderGrid('all'));
   $('#main').innerHTML = v(); tick();
 }
 
@@ -329,7 +330,7 @@ function renderSchedule(){
         <h3>${esc(next.m.title)}</h3>
         <div class="meta" style="color:var(--muted)">${fmtShort(next.start)} · ${fmtTime(next.start)} · ${esc(next.s.venue||'')}${next.s.screen?' · '+esc(next.s.screen):''}${next.s.seat?' · Seat '+esc(next.s.seat):''}</div>
       </div>
-      <div style="text-align:right"><div class="cd" data-cd="${next.start.getTime()}"></div><div style="color:var(--muted);font-size:12px">to showtime</div></div>
+      <div style="text-align:right"><div class="cd" data-cd="${next.start.getTime()}"></div><div style="color:var(--muted);font-size:14px">to showtime</div></div>
     </div>`;
   }
 
@@ -421,11 +422,11 @@ function listRows(){
 function sortList(k){ state.ldir = state.lsort===k ? -(state.ldir||1) : 1; state.lsort = k; render(); }
 function renderList(){
   const rows = listRows(), k = state.lsort||'title', dir = state.ldir||1;
-  let html = filterBar(`<span style="color:var(--muted);font-size:13px">${rows.length} film${rows.length===1?'':'s'}</span><span class="spacer"></span><button class="btn sm" onclick="downloadCSV()">Download CSV</button>`);
+  let html = filterBar(`<span style="color:var(--muted);font-size:15px">${rows.length} film${rows.length===1?'':'s'}</span><span class="spacer"></span><button class="btn sm" onclick="downloadCSV()">Download CSV</button>`);
   if(!rows.length) return html + `<div class="empty"><h3>No films match</h3>Try clearing the search or filters.</div>`;
   html += `<div class="tblwrap"><table class="tbl"><thead><tr>${LCOLS.map(([c,l,h])=>`<th class="${h||''}" onclick="sortList('${c}')">${l}${k===c?(dir>0?' ↑':' ↓'):''}</th>`).join('')}</tr></thead><tbody>`;
   html += rows.map(m => `<tr onclick="openDetail('${m.id}')">
-    <td class="t">${esc(m.title)}${m.originalTitle?`<div style="font-weight:400;color:var(--muted);font-size:12px">${esc(m.originalTitle)}</div>`:''}</td>
+    <td class="t">${esc(m.title)}${m.originalTitle?`<div style="font-weight:400;color:var(--muted);font-size:14px">${esc(m.originalTitle)}</div>`:''}</td>
     <td class="m">${esc(m.genre||'')}${m.genreUnverified?' <span title="Best guess – not verified" style="color:var(--muted)">?</span>':''}</td><td class="hm">${esc(m.director)}</td><td class="hm" title="${esc(m.country)}">${(()=>{ const c=String(m.country||'').split(',').map(x=>x.trim()).filter(Boolean); return esc(c.slice(0,2).join(', '))+(c.length>2?` <span style="color:var(--muted)">+${c.length-2}</span>`:''); })()}</td><td class="hm m">${esc(m.language)}</td><td class="hm m">${esc(m.year)}</td>
     <td>${esc(m.section)}</td><td class="hm m">${esc(m.premiere||'')}</td>
     <td style="color:var(--green)">${confirmInfo(m)?'Confirmed':''}</td><td class="m">${statusLabel(m)}</td></tr>`).join('');
@@ -447,7 +448,7 @@ function renderStats(){
   const n=now();
   const booked = allScreenings().filter(x=>x.s.booked && x.start>n).length;
   const by = (arr,key) => Object.entries(arr.reduce((o,m)=>{ const k=m[key]||'Unknown'; o[k]=(o[k]||0)+1; return o; },{})).sort((a,b)=>b[1]-a[1]);
-  const bar = (rows) => { const max = Math.max(1,...rows.map(r=>r[1])); return rows.slice(0,8).map(([k,v])=>`<div style="display:flex;align-items:center;gap:10px;margin:6px 0"><div style="width:180px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(k)}</div><div style="flex:1;background:var(--bg);border-radius:4px;height:16px"><div style="width:${v/max*100}%;height:100%;background:var(--green);border-radius:4px"></div></div><div style="width:24px;text-align:right;font-size:13px">${v}</div></div>`).join('') || '<div style="color:var(--muted)">Nothing yet</div>'; };
+  const bar = (rows) => { const max = Math.max(1,...rows.map(r=>r[1])); return rows.slice(0,8).map(([k,v])=>`<div style="display:flex;align-items:center;gap:10px;margin:6px 0"><div style="width:180px;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(k)}</div><div style="flex:1;background:var(--bg);border-radius:4px;height:16px"><div style="width:${v/max*100}%;height:100%;background:var(--green);border-radius:4px"></div></div><div style="width:24px;text-align:right;font-size:15px">${v}</div></div>`).join('') || '<div style="color:var(--muted)">Nothing yet</div>'; };
   const top = [...rated].sort((a,b)=>b.rating-a.rating).slice(0,6);
   return `<div class="stats">
     <div class="stat"><b>${w.length}</b><span>films watched</span></div>
@@ -520,15 +521,15 @@ function openDetail(id){
       <h2>${esc(m.title)} ${m.year?`<span style="color:var(--muted);font-weight:400;font-size:18px">${esc(m.year)}</span>`:''}</h2>
       <div class="by">${m.director?'Directed by <b style="color:var(--text)">'+esc(m.director)+'</b>':''}${m.originalTitle?` · <i>${esc(m.originalTitle)}</i>`:''}</div>
       <div>${m.genre?`<span class="tag sec">${esc(m.genre)}${m.genreUnverified?' <span title=\"Best guess – not verified\" style=\"color:var(--muted)\">?</span>':''}</span>`:''}${[m.country,m.language,m.runtime?m.runtime+' min':''].filter(Boolean).map(t=>`<span class="tag sec">${esc(t)}</span>`).join('')}</div>
-      <div style="margin-top:6px">${(()=>{ const c=confirmInfo(m); return c?`<span class="tag booked" style="text-transform:none;letter-spacing:0">✓ Screening confirmed</span><span style="font-size:12px;margin-right:8px">${srcLink(c.source, c.label||'source')}</span>`:`<span class="tag sec" title="No source confirms a screening yet">Screening not yet confirmed</span>`; })()}
+      <div style="margin-top:6px">${(()=>{ const c=confirmInfo(m); return c?`<span class="tag booked" style="text-transform:none;letter-spacing:0">✓ Screening confirmed</span><span style="font-size:14px;margin-right:8px">${srcLink(c.source, c.label||'source')}</span>`:`<span class="tag sec" title="No source confirms a screening yet">Screening not yet confirmed</span>`; })()}
         ${[...new Set([m.section,...(m.tags||[])].filter(Boolean))].map(t=>`<span class="tag plan" style="text-transform:none;letter-spacing:0;cursor:pointer" data-tag="${esc(t)}" onclick="state.tag=this.dataset.tag;closeModal();setView('all')">${esc(t)}</span>`).join('')}</div>
-      ${m.cast?`<div style="font-size:13px;color:var(--muted);margin-top:8px"><b style="color:var(--text)">Cast:</b> ${esc(m.cast)}</div>`:''}
-      ${m.festivals?`<div style="font-size:13px;color:var(--muted);margin-top:4px"><b style="color:var(--text)">Festivals:</b> ${esc(m.festivals)}</div>`:''}
+      ${m.cast?`<div style="font-size:15px;color:var(--muted);margin-top:8px"><b style="color:var(--text)">Cast:</b> ${esc(m.cast)}</div>`:''}
+      ${m.festivals?`<div style="font-size:15px;color:var(--muted);margin-top:4px"><b style="color:var(--text)">Festivals:</b> ${esc(m.festivals)}</div>`:''}
       ${m.synopsis?`<p class="syn">${esc(m.synopsis)}</p>`:''}
-      ${m.notes?`<p style="color:var(--muted);font-size:13px">📝 ${esc(m.notes)}</p>`:''}
-      ${m.link?`<p style="font-size:13px"><a href="${esc(m.link)}" target="_blank" rel="noopener">More info ↗</a></p>`:''}
+      ${m.notes?`<p style="color:var(--muted);font-size:15px">📝 ${esc(m.notes)}</p>`:''}
+      ${m.link?`<p style="font-size:15px"><a href="${esc(m.link)}" target="_blank" rel="noopener">More info ↗</a></p>`:''}
       ${ratingsBlock(m)}
-      ${(m.sources||[]).length?`<div style="font-size:12px;color:var(--muted);margin-top:8px">Sources: ${m.sources.map(x=>x.url?srcLink(x.url,x.label):esc(x.label)).join(' · ')}</div>`:''}
+      ${(m.sources||[]).length?`<div style="font-size:14px;color:var(--muted);margin-top:8px">Sources: ${m.sources.map(x=>x.url?srcLink(x.url,x.label):esc(x.label)).join(' · ')}</div>`:''}
     </div>
   </div>
   <div class="statusbar">
@@ -538,19 +539,19 @@ function openDetail(id){
   </div>
   ${m.status==='watched' ? `<div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-      <div style="display:flex;align-items:center;gap:12px"><div class="rate">${starsHtml}</div><span style="font-size:24px;cursor:pointer;color:${m.liked?'var(--orange)':'#3c4752'}" onclick="toggleLike('${m.id}')" title="Like">♥</span></div>
-      <label style="font-size:13px;color:var(--muted)">Watched on <input type="date" value="${esc(m.watchedOn||'')}" onchange="find('${m.id}').watchedOn=this.value;save();render()" style="background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:4px 6px"></label>
+      <div style="display:flex;align-items:center;gap:12px"><div class="rate">${starsHtml}</div><span style="font-size:24px;cursor:pointer;color:${m.liked?'var(--orange)':'#cfcfcf'}" onclick="toggleLike('${m.id}')" title="Like">♥</span></div>
+      <label style="font-size:15px;color:var(--muted)">Watched on <input type="date" value="${esc(m.watchedOn||'')}" onchange="find('${m.id}').watchedOn=this.value;save();render()" style="background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:4px 6px"></label>
     </div>
     <textarea placeholder="Write a quick review or thoughts…" style="width:100%;margin-top:10px;background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:8px;min-height:70px" oninput="saveReview('${m.id}',this.value)">${esc(m.review||'')}</textarea>
-    <div style="font-size:11.5px;color:var(--muted)">Shift-click a star for a half star.</div>
+    <div style="font-size:13.5px;color:var(--muted)">Shift-click a star for a half star.</div>
   </div>` : ''}
   <div style="font-weight:700;margin:6px 0 4px">Showtimes</div>
   <div>${scr.length ? scr.map(s=>{
     const st=dt(s), en=endOf(m,s), past=en<n;
     return `<div class="scr" style="${past?'opacity:.55':''}">
       <div><b>${fmtShort(st)}, ${fmtTime(st)}</b> <span style="color:var(--muted)">– ${fmtTime(en)}</span><br>
-        <span style="color:var(--muted);font-size:13px">📍 ${esc(s.venue||'Venue TBA')}${s.screen?' · '+esc(s.screen):''}${s.seat?' · Seat '+esc(s.seat):''}</span>
-        <span style="font-size:12px;margin-left:6px">${s.source?srcLink(s.source,'Source'):'<span style="color:var(--muted)">· no source</span>'}</span>
+        <span style="color:var(--muted);font-size:15px">📍 ${esc(s.venue||'Venue TBA')}${s.screen?' · '+esc(s.screen):''}${s.seat?' · Seat '+esc(s.seat):''}</span>
+        <span style="font-size:14px;margin-left:6px">${s.source?srcLink(s.source,'Source'):'<span style="color:var(--muted)">· no source</span>'}</span>
         <div>${s.booked?'<span class="tag booked">Booked</span>':s.going?'<span class="tag plan">Going</span>':''}${cl.has(s.id)?'<span class="tag clash">Clash</span>':''}${m.watchedAt===s.id?'<span class="tag booked">Watched here</span>':''}</div>
       </div>
       <div class="acts" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${past
@@ -613,7 +614,7 @@ function drawScr(){
       <label class="chk"><input type="checkbox" ${s.booked?'checked':''} onchange="editScr[${i}].booked=this.checked">Booked</label>
       <button type="button" class="btn sm danger" onclick="editScr.splice(${i},1);drawScr()">✕</button>
     </div>
-  </div>`).join('') : `<div style="color:var(--muted);font-size:13px">No showtimes. You can add them later.</div>`;
+  </div>`).join('') : `<div style="color:var(--muted);font-size:15px">No showtimes. You can add them later.</div>`;
 }
 function addScr(){
   const last = editScr[editScr.length-1];
@@ -655,7 +656,7 @@ function ratingsBlock(m){
     : r.notFound ? 'No ratings found. New festival films often have none until they’re released. Add the IMDb ID in Edit if you know it.'
     : `${chips ? '' : 'Found, but no scores yet. '}Matched <b>${esc(r.matched)}</b> · ${new Date(r.fetched).toLocaleDateString()}`;
   return `<div class="ratings">${chips?`<div class="rrow">${chips}</div>`:''}
-    <div style="font-size:12px;color:var(--muted);margin-top:${chips?6:0}px">${msg}
+    <div style="font-size:14px;color:var(--muted);margin-top:${chips?6:0}px">${msg}
       <button class="linkbtn" onclick="fetchRatings('${m.id}')">${!db.omdbKey?'Set key':r?'Refresh':'Get ratings'}</button>
       · Search <a href="https://www.rottentomatoes.com/search?search=${t}" target="_blank" rel="noopener">RT</a> · <a href="https://www.imdb.com/find/?q=${q}" target="_blank" rel="noopener">IMDb</a> · <a href="https://letterboxd.com/search/films/${t}/" target="_blank" rel="noopener">Letterboxd</a></div></div>`;
 }
