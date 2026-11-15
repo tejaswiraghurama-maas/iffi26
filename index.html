@@ -175,7 +175,6 @@ table.tbl{width:100%;border-collapse:collapse;font-size:16px}
     <div class="spacer"></div>
     <input class="search" id="q" placeholder="Search films, directors…">
     <button class="btn primary" id="signinBtn" onclick="cloudToggle()">Sign in</button>
-    <button class="btn primary" id="addBtn">+ Add film</button>
     <div class="menu" id="menu">
       <button class="btn" id="menuBtn">⋯</button>
       <div class="dd">
@@ -266,7 +265,6 @@ function persistUI(){ try{ localStorage.setItem(KEY+'-ui', JSON.stringify({view:
 
 $('#tabs').onclick = e => { const b=e.target.closest('button'); if(b) setView(b.dataset.v); };
 $('#q').oninput = e => { state.q = e.target.value; render(); };
-$('#addBtn').onclick = () => openEdit();
 $('#menuBtn').onclick = e => { e.stopPropagation(); $('#menu').classList.toggle('open'); };
 document.addEventListener('click', ()=>$('#menu').classList.remove('open'));
 $('#menu .dd').onclick = e => { const a=e.target.dataset.a; if(a) menuAction(a); };
@@ -334,7 +332,7 @@ function renderSchedule(){
   if(!items.length){
     return html + (db.movies.length
       ? `<div class="empty"><h3>No screenings to show</h3>Add showtimes to films in your watchlist, or loosen the filters.</div>`
-      : `<div class="empty"><h3>Your festival diary is empty</h3>Add the films you want to catch at IFFI, with their screen, venue and time.<br><br><button class="btn primary" onclick="openEdit()">+ Add your first film</button> <button class="btn" onclick="menuAction('demo')">Load demo films</button></div>`);
+      : `<div class="empty"><h3>No films yet</h3>The film list is loading. Refresh the page if it doesn't appear.</div>`);
   }
 
   let day='';
@@ -554,9 +552,7 @@ function openDetail(id){
         ? (m.status!=='watched'?`<button class="btn sm" onclick="quickWatched('${m.id}','${s.id}')">✓ Watched this</button>`:'')
         : `<button class="btn sm" onclick="toggleS('${m.id}','${s.id}','going')">${s.going?'✓ Going':'+ Going'}</button><button class="btn sm" onclick="toggleS('${m.id}','${s.id}','booked')">${s.booked?'🎟 Booked':'Book'}</button>`}</div>
     </div>`;}).join('') : `<div style="color:var(--muted);font-size:14px;padding:6px 0">No showtimes added yet.</div>`}</div>
-  <div class="foot">
-    <button class="btn danger" onclick="delMovie('${m.id}')">Delete</button>
-  </div>`);
+  `);
 }
 
 let editScr = [];
