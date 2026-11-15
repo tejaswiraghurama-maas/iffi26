@@ -839,7 +839,8 @@ async function onUser(u){
     if(Object.keys(park).length){ try{ const old=JSON.parse(localStorage.getItem(KEY+'-parked')||'{}'); localStorage.setItem(KEY+'-parked', JSON.stringify({...old,...park})); }catch(e){} clearLocalMarks(); }
   }
   updateCloudMenu();
-  if(!u) return;
+  if(!u){ let seen=false; try{ seen=localStorage.getItem(KEY+'-welcomed'); }catch(e){} if(!seen) showWelcome(); return; }
+  try{ localStorage.setItem(KEY+'-welcomed','1'); }catch(e){}
   const {doc,getDoc,onSnapshot} = cloud.fb, ref = doc(cloud.fb.store,'users',u.uid);
   try{
     const snap = await getDoc(ref), remote = snap.exists() ? snap.data() : {marks:{},custom:[]};
@@ -867,6 +868,15 @@ function updateCloudMenu(){
   b.textContent = cloud.user ? `Sign out (${cloud.user.email||cloud.user.displayName||'Google'})` : 'Sign in with Google to save online';
   const s=$('#cloudState'); if(s) s.textContent = cloud.user ? '☁️ Saved online' : '';
 }
+function showWelcome(){
+  openModal(`<div style="text-align:center;padding:10px 4px">
+    <h2 style="margin:0 0 6px">Welcome to IFFI Diary</h2>
+    <p style="color:var(--muted);font-size:16px;margin:0 0 18px">Browse all IFFI 2026 films. Sign in to keep your own watchlist, watched films and ratings, saved to your Google account.</p>
+    <button class="btn primary" style="width:100%;padding:14px;font-size:17px" onclick="welcomeDone();closeModal();cloudToggle()">Sign in with Google</button>
+    <button class="btn" style="width:100%;padding:14px;font-size:17px;margin-top:10px" onclick="welcomeDone();closeModal()">I'm a guest – just browse</button>
+  </div>`);
+}
+function welcomeDone(){ try{ localStorage.setItem(KEY+'-welcomed','1'); }catch(e){} }
 async function cloudInit(){
   try{
     const [app,auth,fs] = await Promise.all(['firebase-app.js','firebase-auth.js','firebase-firestore.js'].map(f=>import(FBV+f)));
