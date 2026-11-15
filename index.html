@@ -175,6 +175,8 @@ table.tbl{width:100%;border-collapse:collapse;font-size:16px}
     <div class="menu" id="menu">
       <button class="btn" id="menuBtn">⋯</button>
       <div class="dd">
+        <div id="cloudState" style="font-size:13px;color:var(--green);padding:2px 10px"></div>
+        <button data-a="cloud" id="cloudBtn" style="font-weight:600">Sign in with Google to save online</button>
         <button data-a="export">Export backup (JSON)</button>
         <button data-a="official">Load official IFFI 2026 films</button>
         <button data-a="import">Import backup / film list</button>
@@ -712,6 +714,7 @@ function menuAction(a){
   if(a==='demo') loadDemo();
   if(a==='ratings') fetchAll();
   if(a==='key') setKey();
+  if(a==='cloud') cloudToggle();
 }
 $('#file').onchange = async e => {
   const f=e.target.files[0]; if(!f) return;
@@ -785,6 +788,95 @@ function loadDemo(){
   for(const d of demo){ db.movies.push({status:'want', rating:0, ...d, id:uid(), added:Date.now(), screenings:d.screenings.map(s=>({id:uid(),seat:'',booked:false,going:false,...s}))}); }
   save(); render(); toast('Demo films added — delete them whenever you like');
 }
+
+/* ---------- online sync (optional Google sign-in) ---------- */
+const FB_CFG = {apiKey:"AIzaSyA6mBtRlKHFojWP46-KuL5AjdRmTR2TD-c",authDomain:"iffi26-8579d.firebaseapp.com",projectId:"iffi26-8579d",storageBucket:"iffi26-8579d.firebasestorage.app",messagingSenderId:"798581706323",appId:"1:798581706323:web:b4725dfb07f67087e440a6"};
+const FBV = 'https://www.gstatic.com/firebasejs/10.12.2/';
+const MARK_FIELDS = ['status','priority','rating','liked','review','watchedOn','notes'];
+const cloud = {fb:null, user:null, ready:false, marks:{}, known:new Set(), unsub:null, t:null};
+const tkey = m => String(m.title||'').trim().toLowerCase();
+const skey = s => [s.date,s.time,s.venue].join('|');
+let OFFICIAL_T = new Set(); try{ OFFICIAL_T = new Set(JSON.parse($('#official').textContent).movies.map(tkey)); }catch(e){}
+const isOfficial = m => OFFICIAL_T.has(tkey(m));
+function localMark(m){
+  const f={}; for(const k of MARK_FIELDS){ const v=m[k]; if(v!==undefined && v!==null && v!=='' && v!==false && v!==0 && !(k==='status'&&v==='none')) f[k]=v; }
+  const s={}; for(const x of m.screenings||[]) if(x.going||x.booked||x.seat) s[skey(x)]={going:!!x.going,booked:!!x.booked,seat:x.seat||''};
+  const w = m.watchedAt ? (m.screenings||[]).find(x=>x.id===m.watchedAt) : null;
+  const e={}; if(Object.keys(f).length) e.f=f; if(Object.keys(s).length) e.s=s; if(w) e.wa=skey(w);
+  return Object.keys(e).length ? e : null;
+}
+function setMark(m,e){
+  for(const k of MARK_FIELDS){ const v=e?.f?.[k]; if(v===undefined){ if(k==='status') m.status='none'; else delete m[k]; } else m[k]=v; }
+  for(const x of m.screenings||[]){ const r=e?.s?.[skey(x)]; x.going=!!r?.going; x.booked=!!r?.booked; x.seat=r?.seat||''; }
+  m.watchedAt = e?.wa ? (m.screenings||[]).find(x=>skey(x)===e.wa)?.id : undefined;
+}
+const clean = o => JSON.parse(JSON.stringify(o));
+function applyRemote(data){
+  const marks = data?.marks||{}, custom = data?.custom||[];
+  const same = JSON.stringify(marks)===JSON.stringify(cloud.marks) && JSON.stringify(custom)===JSON.stringify(db.movies.filter(m=>!isOfficial(m)).map(clean));
+  cloud.marks = marks;
+  if(same && cloud.ready) return;
+  for(const m of db.movies) if(isOfficial(m)){ setMark(m, marks[tkey(m)]); cloud.known.add(tkey(m)); }
+  db.movies = db.movies.filter(isOfficial).concat(custom);
+  _localSave(); render();
+}
+function pushSoon(){ clearTimeout(cloud.t); cloud.t = setTimeout(pushNow, 1200); }
+async function pushNow(){
+  clearTimeout(cloud.t); if(!cloud.user || !cloud.ready) return;
+  let fixed=false; const marks={...cloud.marks};
+  for(const m of db.movies){ if(!isOfficial(m)) continue; const t=tkey(m);
+    if(!cloud.known.has(t)){ setMark(m, marks[t]); cloud.known.add(t); fixed=true; continue; }
+    const e=localMark(m); if(e) marks[t]=e; else delete marks[t]; }
+  if(fixed){ _localSave(); render(); }
+  cloud.marks = marks;
+  const {doc,setDoc} = cloud.fb;
+  try{ await setDoc(doc(cloud.fb.store,'users',cloud.user.uid), clean({marks, custom:db.movies.filter(m=>!isOfficial(m)), updated:Date.now()})); }
+  catch(e){ console.warn(e); toast('Could not save online – will retry'); pushSoon(); }
+}
+const _localSave = save;
+save = function(){ _localSave(); if(cloud.user && cloud.ready) pushSoon(); };
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden && cloud.t) pushNow(); });
+async function onUser(u){
+  cloud.user=u; cloud.ready=false; if(cloud.unsub){ cloud.unsub(); cloud.unsub=null; }
+  updateCloudMenu();
+  if(!u) return;
+  const {doc,getDoc,onSnapshot} = cloud.fb, ref = doc(cloud.fb.store,'users',u.uid);
+  try{
+    const snap = await getDoc(ref), remote = snap.exists() ? snap.data() : {marks:{},custom:[]};
+    const marks = {...(remote.marks||{})};
+    for(const m of db.movies) if(isOfficial(m)){ const t=tkey(m), e=localMark(m); if(e && !marks[t]) marks[t]=e; }   // keep this phone's activity
+    const custom = [...(remote.custom||[])], have = new Set(custom.map(tkey));
+    for(const m of db.movies) if(!isOfficial(m) && !have.has(tkey(m))) custom.push(clean(m));
+    cloud.marks = {}; applyRemote({marks, custom}); cloud.ready = true;
+    await pushNow();
+    cloud.unsub = onSnapshot(ref, s=>{ if(!s.metadata.hasPendingWrites && s.exists()) applyRemote(s.data()); });
+    toast('Signed in – your lists are saved online');
+  }catch(e){ console.warn(e); toast('Could not reach online storage'); }
+}
+function updateCloudMenu(){
+  const b=$('#cloudBtn'); if(!b) return;
+  b.textContent = cloud.user ? `Sign out (${cloud.user.email||cloud.user.displayName||'Google'})` : 'Sign in with Google to save online';
+  const s=$('#cloudState'); if(s) s.textContent = cloud.user ? '☁️ Saved online' : '';
+}
+async function cloudInit(){
+  try{
+    const [app,auth,fs] = await Promise.all(['firebase-app.js','firebase-auth.js','firebase-firestore.js'].map(f=>import(FBV+f)));
+    const a = app.initializeApp(FB_CFG);
+    cloud.fb = {...auth, ...fs, auth:auth.getAuth(a), store:fs.getFirestore(a)};
+    auth.onAuthStateChanged(cloud.fb.auth, onUser);
+  }catch(e){ console.warn('Online sync unavailable', e); }
+}
+async function cloudToggle(){
+  if(!cloud.fb){ toast('Online sync not available right now'); return; }
+  const {auth, GoogleAuthProvider, signInWithPopup, signOut} = cloud.fb;
+  if(cloud.user){ if(confirm('Sign out? Your lists stay saved online and on this phone.')){ await pushNow(); await signOut(auth); toast('Signed out'); } return; }
+  const p = new GoogleAuthProvider();
+  try{ await signInWithPopup(auth, p); }
+  catch(e){ const c=e.code||'';
+    if(/popup-blocked|operation-not-supported|web-storage/.test(c)) alert('Sign-in window was blocked.\n\nOpen this site directly in Safari or Chrome (not inside WhatsApp or another app), allow pop-ups, and try again.');
+    else if(!/popup-closed|cancelled-popup/.test(c)) toast('Sign-in failed: '+(c||e.message)); }
+}
+cloudInit();
 
 let firstRun = false; try{ firstRun = !localStorage.getItem(KEY); }catch(e){}
 render();
