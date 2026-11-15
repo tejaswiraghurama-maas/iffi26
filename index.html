@@ -177,15 +177,6 @@ table.tbl{width:100%;border-collapse:collapse;font-size:16px}
       <div class="dd">
         <div id="cloudState" style="font-size:13px;color:var(--green);padding:2px 10px"></div>
         <button data-a="cloud" id="cloudBtn" style="font-weight:600">Sign in with Google to save online</button>
-        <button data-a="export">Export backup (JSON)</button>
-        <button data-a="official">Load official IFFI 2026 films</button>
-        <button data-a="import">Import backup / film list</button>
-        <button data-a="ics">Export booked shows (.ics)</button>
-        <button data-a="ratings">Fetch ratings for all films</button>
-        <button data-a="key">Set ratings key (OMDb)</button>
-        <button data-a="venues">Edit venues &amp; sections</button>
-        <button data-a="demo">Load demo films</button>
-        <button data-a="wipe" style="color:var(--red)">Erase everything</button>
       </div>
     </div>
   </div>
@@ -740,11 +731,11 @@ $('#file').onchange = async e => {
         }
         else { db.movies.push({status:'want', rating:0, ...m, id:uid(), added:Date.now(), screenings}); added++; }
       }
-      toast(`Imported ${added} new film${added===1?'':'s'}${updated?`, updated ${updated}`:''}`);
+      if(!window._quiet) toast(`Imported ${added} new film${added===1?'':'s'}${updated?`, updated ${updated}`:''}`);
     }
     save(); render();
   }catch(err){ alert('That file is not a valid IFFI Diary backup or film list.'); }
-  e.target.value=''; window._forceMerge=false;
+  e.target.value=''; window._forceMerge=false; window._quiet=false;
 };
 async function loadOfficial(){
   try{
@@ -878,9 +869,9 @@ async function cloudToggle(){
 }
 cloudInit();
 
-let firstRun = false; try{ firstRun = !localStorage.getItem(KEY); }catch(e){}
 render();
-if(firstRun && !db.movies.length) loadOfficial().then(()=>{ state.view='all'; render(); });
+{ const t=document.getElementById('official')?.textContent||''; const ver=t.length+':'+((t.match(/"fetched":"([^"]*)"/)||[])[1]||'');
+  if(t && db.officialVer!==ver){ db.officialVer=ver; window._quiet=true; loadOfficial(); } }   // pick up film-list updates automatically
 </script>
 </body>
 </html>
