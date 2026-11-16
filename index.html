@@ -322,8 +322,17 @@ body:not(.guest) .dsign{display:none!important}
 .vm{flex:1;min-width:0;display:flex;flex-direction:column}.vm b{font-size:16px}.vm small{color:var(--muted);font-size:13.5px}
 .vnone{color:var(--muted);font-size:15.5px;background:var(--bg);border:1px dashed var(--line);border-radius:10px;padding:14px;margin-top:12px}
 .vmapwrap{position:relative;z-index:0;isolation:isolate;border-radius:14px;overflow:hidden;border:1px solid var(--line);margin:0 0 18px;background:#e9eef0}
-#vmap{height:260px;width:100%}
-@media (max-width:640px){#vmap{height:220px}}
+#vmap{height:340px;width:100%}
+@media (max-width:640px){#vmap{height:300px}}
+.mapfs,.mapx{position:absolute;z-index:1000;top:10px;right:10px;display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid rgba(0,0,0,.2);border-radius:8px;padding:8px 12px;font:inherit;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.mapx{display:none}
+.mapkey{position:absolute;z-index:1000;left:10px;bottom:10px;display:flex;gap:10px;flex-wrap:wrap;background:rgba(255,255,255,.94);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600;box-shadow:0 1px 4px rgba(0,0,0,.15);pointer-events:none}
+.mapkey span{display:inline-flex;align-items:center;gap:5px}.mapkey i{width:11px;height:11px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
+.vmapwrap.fs .mapkey{bottom:calc(14px + env(safe-area-inset-bottom));font-size:15px}
+.vmapwrap .leaflet-control-attribution{font-size:10px}
+.vmapwrap.fs{position:fixed;inset:0;z-index:45;margin:0;border-radius:0;border:0}
+.vmapwrap.fs #vmap{height:100%}
+.vmapwrap.fs .mapfs{display:none}.vmapwrap.fs .mapx{display:inline-flex;top:calc(10px + env(safe-area-inset-top));font-size:16px;padding:10px 14px}
 .leaflet-container{font:inherit}
 .vgroup{margin-bottom:18px}.vgroup .sec-h{flex-direction:column;align-items:flex-start;gap:0}.vgroup .sec-h span{font-size:14px}
 .vlist{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
@@ -492,13 +501,13 @@ const VENUES = [
   {id:'samrat-ashoka', lat:15.49707, lon:73.82385, g:'pan', travel:'Short walk from INOX Panaji', name:'Samrat & Ashoka', area:'Panaji', kind:'cinema', re:/samrat|ashoka?\b/i, map:'Samrat Ashok Cinema, Dada Vaidya Road, Panaji, Goa', about:'Twin cinema screens on Dada Vaidya Road.'},
   {id:'inox-porvorim', lat:15.52562, lon:73.82732, g:'por', travel:'About 20 min drive from INOX Panaji', name:'INOX Porvorim', area:'Porvorim', kind:'cinema', re:/porvorim|mall de goa/i, map:'INOX Mall De Goa, Porvorim, Goa', about:'Four multiplex screens inside Mall De Goa.'},
   {id:'ravindra-margao', lat:15.28506, lon:73.96253, g:'mar', travel:'About 55 min drive from INOX Panaji', name:'Ravindra Bhavan', area:'Margao', kind:'cinema', re:/ravindra(?!.*open)/i, map:'Ravindra Bhavan, Fatorda, Margao, Goa', about:'A major cultural auditorium serving South Goa, in Fatorda.'},
-  {id:'magic-ponda', lat:15.40355, lon:74.01017, g:'pon', travel:'About 1 hr drive from INOX Panaji', name:'Magic Movies', area:'Ponda', kind:'cinema', re:/magic movies|ponda/i, map:'Magic Movies, Ponda, Goa', about:'The main indoor cinema for festival-goers in Central Goa.'},
+  {id:'magic-ponda', approx:true, lat:15.40355, lon:74.01017, g:'pon', travel:'About 1 hr drive from INOX Panaji', name:'Magic Movies', area:'Ponda', kind:'cinema', re:/magic movies|ponda/i, map:'Magic Movies, Ponda, Goa', about:'The main indoor cinema for festival-goers in Central Goa.'},
   {id:'miramar', lat:15.4766, lon:73.80668, g:'pan', travel:'10 min drive from INOX Panaji', name:'Miramar Beach', area:'Panaji', kind:'open', re:/miramar/i, map:'Miramar Beach, Panaji, Goa', about:'Popular open-air beach screenings near the main festival hub.'},
   {id:'anjuna', lat:15.5761, lon:73.74018, g:'nor', travel:'About 45 min drive from INOX Panaji', name:'Anjuna Beach', area:'North Goa', kind:'open', re:/anjuna/i, map:'Anjuna Beach, Goa', about:'Evening seaside screenings for visitors and locals.'},
   {id:'vagator', lat:15.59765, lon:73.73349, g:'nor', travel:'About 45 min drive from INOX Panaji', name:'Vagator Beach Helipad', area:'North Goa', kind:'open', re:/vagator/i, map:'Vagator Beach Helipad, Goa', about:'A large open-air cinema ground overlooking the coast.'},
   {id:'ravindra-open', lat:15.28506, lon:73.96253, g:'mar', travel:'About 55 min drive from INOX Panaji', name:'Ravindra Bhavan Open Space', area:'Margao', kind:'open', re:/ravindra.*open|open.*ravindra/i, map:'Ravindra Bhavan, Fatorda, Margao, Goa', about:'An outdoor screening area inside the Margao cultural complex.'},
   {id:'kala-academy', lat:15.49421, lon:73.81741, g:'pan', travel:'5 min drive from INOX Panaji', name:'Kala Academy', area:'Campal, Panaji', kind:'event', re:/kala academy/i, map:'Kala Academy, Campal, Panaji, Goa', about:'The hub for masterclasses, workshops, panel discussions and in-conversation sessions, and for delegate pass collection (21–27 Nov).'},
-  {id:'spm-stadium', lat:15.47027, lon:73.82257, g:'evt', travel:'10 min drive from INOX Panaji', name:'Dr. Shyama Prasad Mukherjee Indoor Stadium', area:'Taleigao', kind:'event', re:/mukherjee|indoor stadium|taleigao/i, map:'Dr. Shyama Prasad Mukherjee Indoor Stadium, Taleigao, Goa', about:'Host venue for the opening and closing ceremonies.'},
+  {id:'spm-stadium', approx:true, lat:15.47027, lon:73.82257, g:'evt', travel:'10 min drive from INOX Panaji', name:'Dr. Shyama Prasad Mukherjee Indoor Stadium', area:'Taleigao', kind:'event', re:/mukherjee|indoor stadium|taleigao/i, map:'Dr. Shyama Prasad Mukherjee Indoor Stadium, Taleigao, Goa', about:'Host venue for the opening and closing ceremonies.'},
   {id:'taj-cidade', lat:15.45614, lon:73.81422, g:'evt', travel:'15 min drive from INOX Panaji', name:'Taj Cidade de Goa Horizon', area:'Dona Paula', kind:'event', re:/cidade|taj\b/i, map:'Taj Cidade de Goa Horizon, Dona Paula, Goa', about:'Official curtain-raiser events and select press gatherings.'},
 ];
 const VKIND = {cinema:'Cinema', open:'Open-air', event:'Events & ceremonies'};
@@ -519,7 +528,7 @@ const dayWord = d => { const t=localISO(), k=localISO(d), tm=localISO(new Date(D
 function venueNext(vid){ const n=now(); return venueShows(vid).find(x=>x.end>n); }
 function renderVenues(){
   const has = hasShows(), n = now();
-  let h = `<div class="vmapwrap"><div id="vmap" role="region" aria-label="Map of festival venues"></div></div>`;
+  let h = `<div class="vmapwrap"><div id="vmap" role="region" aria-label="Map of festival venues"></div><button class="mapfs" onclick="mapFull(true)" aria-label="Full screen map"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>Full screen</span></button><button class="mapx" onclick="mapFull(false)" aria-label="Close full screen map"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Close</span></button><div class="mapkey" aria-hidden="true"><span><i style="background:#1f7a4d"></i>Cinema</span><span><i style="background:#c27a12"></i>Open-air</span><span><i style="background:#4553a6"></i>Events</span></div></div>`;
   for(const [g,label,sub] of VGROUPS){
     const vs = VENUES.filter(v=>v.g===g); if(!vs.length) continue;
     h += `<div class="vgroup"><h2 class="sec-h">${esc(label)} <span>${sub?esc(sub):vs.length+' venue'+(vs.length>1?'s':'')}</span></h2><div class="vlist">`;
@@ -535,19 +544,30 @@ let _lf=null;
 function initVenueMap(){
   const el=$('#vmap'); if(!el) return;
   const go=()=>{ if(!el.isConnected || el._done) return; el._done=1;
-    const L=window.L, map=L.map(el,{scrollWheelZoom:false, tap:true, attributionControl:true});
+    const L=window.L, map=L.map(el,{scrollWheelZoom:false, tap:true, attributionControl:true, zoomSnap:0.25, zoomDelta:0.5}); el._map=map;
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18, attribution:'© OpenStreetMap'}).addTo(map);
     const col={cinema:'#1f7a4d', open:'#c27a12', event:'#4553a6'}, pts=[];
     for(const v of VENUES){ if(v.id==='ravindra-open') continue; pts.push([v.lat,v.lon]);
       L.circleMarker([v.lat,v.lon],{radius:9, color:'#fff', weight:2, fillColor:col[v.kind], fillOpacity:1}).addTo(map)
-        .bindTooltip(v.name+(v.id==='ravindra-margao'?' (+ open space)':''),{direction:'top', offset:[0,-8]})
+        .bindTooltip(v.name+(v.id==='ravindra-margao'?' (+ open space)':'')+(v.approx?' – approx. location':''),{direction:'top', offset:[0,-8]})
         .on('click',()=>openVenue(v.id)); }
-    map.fitBounds(pts,{padding:[24,24]}); };
+    el._pts=pts; map.invalidateSize(); map.fitBounds(pts,{paddingTopLeft:[18,56],paddingBottomRight:[18,50]}); };
   if(window.L) return go();
   if(!_lf){ _lf=new Promise((ok,no)=>{ const c=document.createElement('link'); c.rel='stylesheet'; c.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'; document.head.appendChild(c);
     const sc=document.createElement('script'); sc.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'; sc.onload=ok; sc.onerror=no; document.head.appendChild(sc); }); }
   _lf.then(go).catch(()=>{ el.parentNode.style.display='none'; });
 }
+function mapFull(on){
+  const w=$('.vmapwrap'), el=$('#vmap'); if(!w) return;
+  if(on===w.classList.contains('fs')) return;
+  w.classList.toggle('fs', on); document.body.style.overflow = on ? 'hidden' : '';
+  if(on && !history.state?.mapfs) history.pushState({mapfs:1},'');
+  if(!on && history.state?.mapfs && mapFull._fromBack!==true) history.back();
+  mapFull._fromBack=false;
+  if(el?._map){ setTimeout(()=>{ el._map.invalidateSize(); el._map.fitBounds(el._pts,on?{paddingTopLeft:[40,70],paddingBottomRight:[40,70]}:{paddingTopLeft:[18,56],paddingBottomRight:[18,50]}); if(on) el._map.scrollWheelZoom.enable(); else el._map.scrollWheelZoom.disable(); }, 60); }
+}
+window.addEventListener('popstate', ()=>{ const w=$('.vmapwrap'); if(w?.classList.contains('fs') && !history.state?.mapfs){ mapFull._fromBack=true; mapFull(false); } });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && $('.vmapwrap.fs') && !$('#scrim').classList.contains('open')) mapFull(false); });
 function openVenue(id){
   const v = venueById(id); if(!v) return;
   const n = now(), all = venueShows(id).filter(x=>x.end>n || state.showPast);
@@ -570,7 +590,7 @@ function openVenue(id){
   } else {
     body = `<div class="vnone">${v.kind==='event' ? 'No film screenings are listed here.' : hasShows() ? 'No upcoming screenings listed here.' : 'Schedule not announced yet. Films and showtimes will appear here as soon as IFFI publishes them.'}</div>`;
   }
-  openModal(`<div class="vhead"><span class="vic big k-${v.kind}">${vIcon(v.kind,26)}</span><div><h2>${esc(v.name)}</h2><div class="dmeta">${esc(v.area)} · ${VKIND[v.kind]}</div>${v.travel?`<div class="dmeta">${esc(v.travel)}</div>`:''}</div></div>
+  openModal(`<div class="vhead"><span class="vic big k-${v.kind}">${vIcon(v.kind,26)}</span><div><h2>${esc(v.name)}</h2><div class="dmeta">${esc(v.area)} · ${VKIND[v.kind]}</div>${v.travel?`<div class="dmeta">${esc(v.travel)}</div>`:''}${v.approx?`<div class="dmeta" style="font-size:13.5px">Map pin is approximate – use Directions</div>`:''}</div></div>
     <p class="vabout">${esc(v.about)}</p>
     <a class="btn vdir" href="${mapUrl(v.map)}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg>Directions</a>
     ${v.kind!=='event'||shows.length?`<div class="vlist-h">Films showing here</div>`:''}${body}`); tick();
