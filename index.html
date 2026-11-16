@@ -4,19 +4,27 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#ffffff">
-<meta name="description" content="Browse IFFI Goa 2026 films, see what is recommended, and keep your own watchlist.">
+<meta name="description" content="Festival Diaries · Goa – your diary for IFFI Goa 2026. Browse films, plan screenings and keep your own list. Unofficial fan guide.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Festival Diaries · Goa">
+<meta property="og:title" content="Festival Diaries · Goa">
+<meta property="og:description" content="Your diary for IFFI Goa 2026 – browse films, plan screenings, keep your list.">
+<meta property="og:image" content="https://tejaswiraghurama-maas.github.io/iffi26/og.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta property="og:url" content="https://tejaswiraghurama-maas.github.io/iffi26/">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="IFFI Diary">
+<meta name="apple-mobile-web-app-title" content="Festival Diaries">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<title>IFFI Diary</title>
+<title>Festival Diaries · Goa</title>
 <style>
 :root{
   --bg:#ffffff; --bg2:#f5f5f3; --card:#ffffff; --line:#dedede; --text:#1d1d1f; --muted:#555a60;
-  --green:#1b7a44; --orange:#c2410c; --blue:#1d1d1f; --red:#b42318; --gold:#8a6100;
+  --green:#B9472A; --brand-tint:#FBEDE8; --brand-line:#F0CDBF; --teal:#0E5A60; --orange:#c2410c; --blue:#1d1d1f; --red:#b42318; --gold:#8a6100;
   color-scheme: light;
   --radius:10px;
 }
@@ -26,7 +34,9 @@ button,input,select,textarea{font:inherit;color:inherit}
 a{color:var(--blue)}
 header{position:sticky;top:0;padding-top:env(safe-area-inset-top);z-index:20;background:rgba(255,255,255,.97);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 .bar{max-width:1180px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.logo{color:inherit;text-decoration:none;cursor:pointer;display:flex;align-items:center;gap:8px;font-weight:800;letter-spacing:.3px;font-size:21px}
+.logo{color:inherit;text-decoration:none;cursor:pointer;display:flex;align-items:center;gap:9px;font-size:19px}
+.lmark{width:34px;height:34px;flex:none;display:block}
+.lname{display:flex;flex-direction:column;line-height:1.1}.lname b{font-weight:800;letter-spacing:.2px;white-space:nowrap}.lname small{font-size:11.5px;font-weight:700;letter-spacing:2.4px;text-transform:uppercase;color:var(--green)}
 .dots{display:flex;gap:3px}.dots i{width:12px;height:12px;border-radius:50%;display:block}
 .dots i:nth-child(1){background:var(--orange)}.dots i:nth-child(2){background:var(--green)}.dots i:nth-child(3){background:var(--blue)}
 nav{display:flex;gap:4px;flex-wrap:wrap}
@@ -66,7 +76,7 @@ h2.day:first-child{margin-top:4px}
 .row .meta{color:var(--muted);font-size:15px}
 .row .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .tag{display:inline-block;font-size:13.5px;font-weight:500;padding:3px 9px;border-radius:6px;margin:0 5px 5px 0;background:#efefed;color:var(--text)}
-.tag.booked{background:#e3f2e8;color:var(--green)}
+.tag.booked{background:var(--brand-tint);color:var(--green)}
 .tag.plan{background:#efefed;color:var(--text)}
 .tag.clash{background:#fdecea;color:var(--red)}
 .tag.prio{background:#fbf3df;color:var(--gold)}
@@ -144,7 +154,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:16px}
 .menu .dd button:hover{background:var(--line)}
 @media (max-width:640px){
   .bar{gap:8px;padding:8px 12px}
-  .logo{flex:1;font-size:17px}
+  .logo{flex:1;font-size:17px}.lmark{width:30px;height:30px}
   .spacer{display:none}
   nav{order:4;width:100%;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -4px}
   nav::-webkit-scrollbar{display:none}
@@ -257,7 +267,7 @@ body:has(#sheet.picker.open) #sheetScrim{background:rgba(0,0,0,.3)}
 body:not(.guest) .dsign{display:none!important}
 .statusbar{margin:14px 0 4px}
 .sbtn{display:flex;align-items:center;justify-content:center;gap:6px;font:inherit;font-weight:600;font-size:15px;color:var(--text);min-height:46px}
-.sbtn.on.want,.sbtn.on.watched{background:#e8f3ec;border-color:var(--green);color:var(--green)}
+.sbtn.on.want,.sbtn.on.watched{background:var(--brand-tint);border-color:var(--green);color:var(--green)}
 .sbtn.on.prio{background:#fbf3df}
 .dsyn{margin-top:10px}
 .dsyn .syn{margin:0;font-size:16.5px;line-height:1.5}
@@ -298,7 +308,7 @@ body:not(.guest) .dsign{display:none!important}
 .dhead{padding-right:0!important}.dinfo h2{padding-right:64px}
 .pbtn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:52px;margin:16px 0 0;border-radius:10px;border:1px solid var(--green);background:var(--green);color:#fff;font:inherit;font-size:17px;font-weight:700;cursor:pointer;padding:10px 14px}
 .pbtn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pbtn.on,.pbtn.going{background:#e8f3ec;color:var(--green)}
+.pbtn.on,.pbtn.going{background:var(--brand-tint);color:var(--green)}
 .pbtn.going b{font-weight:800}.pbtn.going span{font-weight:600}
 .seenrow{text-align:center;margin:8px 0 12px}.seenrow .linkbtn{color:var(--muted);font-size:15px;text-decoration:underline;padding:6px}
 .myrate{margin-top:16px}.myrate .linkbtn{color:var(--muted);font-size:14px}
@@ -308,8 +318,8 @@ body:not(.guest) .dsign{display:none!important}
 .vcard{scroll-snap-align:start;display:flex;align-items:center;gap:10px;text-align:left;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;color:var(--text);cursor:pointer;min-height:64px}
 .vcard:hover{border-color:#bbb}
 .vtx{min-width:0;display:flex;flex-direction:column}.vtx b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.vtx small{color:var(--muted);font-size:13.5px}
-.vic{flex:none;width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#eef2f0;color:var(--green)}
-.vic.k-open{background:#fdf3e1;color:#a5620c}.vic.k-event{background:#eef0fb;color:#4553a6}
+.vic{flex:none;width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--brand-tint);color:var(--green)}
+.vic.k-open{background:#fdf3e1;color:#a5620c}.vic.k-event{background:#e3eff0;color:#0E5A60}
 .vic.big{width:52px;height:52px;border-radius:14px}
 .vhead{display:flex;gap:14px;align-items:center;padding-right:40px}.vhead h2{margin:0;font-size:22px;line-height:1.2}
 .vabout{font-size:16px;line-height:1.5;margin:14px 0 12px}
@@ -342,12 +352,14 @@ body:not(.guest) .dsign{display:none!important}
 .vk{color:var(--muted);font-size:13.5px}
 .vnext{font-size:14px;color:var(--green);font-weight:600;margin-top:1px}.vnext.live{color:#d93025}
 .chev{flex:none;color:#b5b5b5}
-.soon{display:flex;flex-direction:column;gap:2px;background:#f4f7f5;border:1px solid #dbe7df;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:15px}.soon b{font-size:16px}.soon span{color:var(--muted)}
-.vnextbox{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;background:#e8f3ec;border:1px solid #c6e2d1;border-radius:12px;padding:12px 14px;margin:14px 0 6px;font:inherit;color:var(--text);cursor:pointer}
+.soon{display:flex;flex-direction:column;gap:2px;background:#fdf6f3;border:1px solid var(--brand-line);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:15px}.soon b{font-size:16px}.soon span{color:var(--muted)}
+.vnextbox{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;background:var(--brand-tint);border:1px solid var(--brand-line);border-radius:12px;padding:12px 14px;margin:14px 0 6px;font:inherit;color:var(--text);cursor:pointer}
 .vnextbox span{display:flex;flex-direction:column}.vnextbox small{color:var(--muted);font-size:13px}.vnextbox b{font-size:17px}
 .vnextbox .cd{font-weight:800;font-size:18px;color:var(--green);white-space:nowrap}
 .vnextbox.live{background:#fdecea;border-color:#f5c6c1}
 .vdays{margin:8px 0 2px}
+.foot-note{max-width:1180px;margin:-60px auto 0;padding:0 16px 90px;color:var(--muted);font-size:13px;line-height:1.5}
+@media (max-width:640px){.foot-note{margin-top:-90px;padding-bottom:110px}}
 .myrate{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:16px;font-weight:600}
 .sec-h{display:flex;align-items:baseline;gap:8px;font-size:19px;margin:4px 0 10px}
 .sec-h span{color:var(--muted);font-weight:500;font-size:15px}
@@ -369,7 +381,7 @@ body:not(.guest) .dsign{display:none!important}
 <body class="guest">
 <header>
   <div class="bar">
-    <a class="logo" id="home" href="./" aria-label="IFFI Diary – home">IFFI Diary</a>
+    <a class="logo" id="home" href="./" aria-label="Festival Diaries Goa – home"><svg class="lmark" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#B9472A"/><path d="M20 12h24v40l-12-9-12 9z" fill="#fff"/><g fill="#B9472A"><rect x="23" y="16" width="4" height="4" rx="1"/><rect x="23" y="24" width="4" height="4" rx="1"/><rect x="23" y="32" width="4" height="4" rx="1"/><rect x="37" y="16" width="4" height="4" rx="1"/><rect x="37" y="24" width="4" height="4" rx="1"/><rect x="37" y="32" width="4" height="4" rx="1"/></g></svg><span class="lname"><b>Festival Diaries</b><small>Goa</small></span></a>
     <nav id="tabs" aria-label="Main">
       <button data-v="all" class="on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M15.6 8.4l-2.1 5.1-5.1 2.1 2.1-5.1z"/></svg><span class="lbl">Discover</span></button>
       <button data-v="schedule"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span class="lbl">Schedule</span></button>
@@ -389,6 +401,7 @@ body:not(.guest) .dsign{display:none!important}
 </header>
 
 <main id="main"></main>
+<footer class="foot-note">Festival Diaries · Goa is an unofficial fan guide to IFFI Goa 2026. Not affiliated with IFFI, the Entertainment Society of Goa or the Government of India.</footer>
 
 <div class="scrim" id="scrim"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
 <div class="toast" id="toast"></div>
@@ -528,7 +541,7 @@ const dayWord = d => { const t=localISO(), k=localISO(d), tm=localISO(new Date(D
 function venueNext(vid){ const n=now(); return venueShows(vid).find(x=>x.end>n); }
 function renderVenues(){
   const has = hasShows(), n = now();
-  let h = `<div class="vmapwrap"><div id="vmap" role="region" aria-label="Map of festival venues"></div><button class="mapfs" onclick="mapFull(true)" aria-label="Full screen map"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>Full screen</span></button><button class="mapx" onclick="mapFull(false)" aria-label="Close full screen map"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Close</span></button><div class="mapkey" aria-hidden="true"><span><i style="background:#1f7a4d"></i>Cinema</span><span><i style="background:#c27a12"></i>Open-air</span><span><i style="background:#4553a6"></i>Events</span></div></div>`;
+  let h = `<div class="vmapwrap"><div id="vmap" role="region" aria-label="Map of festival venues"></div><button class="mapfs" onclick="mapFull(true)" aria-label="Full screen map"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>Full screen</span></button><button class="mapx" onclick="mapFull(false)" aria-label="Close full screen map"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Close</span></button><div class="mapkey" aria-hidden="true"><span><i style="background:#B9472A"></i>Cinema</span><span><i style="background:#D08A1E"></i>Open-air</span><span><i style="background:#0E5A60"></i>Events</span></div></div>`;
   for(const [g,label,sub] of VGROUPS){
     const vs = VENUES.filter(v=>v.g===g); if(!vs.length) continue;
     h += `<div class="vgroup"><h2 class="sec-h">${esc(label)} <span>${sub?esc(sub):vs.length+' venue'+(vs.length>1?'s':'')}</span></h2><div class="vlist">`;
@@ -546,7 +559,7 @@ function initVenueMap(){
   const go=()=>{ if(!el.isConnected || el._done) return; el._done=1;
     const L=window.L, map=L.map(el,{scrollWheelZoom:false, tap:true, attributionControl:true, zoomSnap:0.25, zoomDelta:0.5}); el._map=map;
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18, attribution:'© OpenStreetMap'}).addTo(map);
-    const col={cinema:'#1f7a4d', open:'#c27a12', event:'#4553a6'}, pts=[];
+    const col={cinema:'#B9472A', open:'#D08A1E', event:'#0E5A60'}, pts=[];
     for(const v of VENUES){ if(v.id==='ravindra-open') continue; pts.push([v.lat,v.lon]);
       L.circleMarker([v.lat,v.lon],{radius:9, color:'#fff', weight:2, fillColor:col[v.kind], fillOpacity:1}).addTo(map)
         .bindTooltip(v.name+(v.id==='ravindra-margao'?' (+ open space)':'')+(v.approx?' – approx. location':''),{direction:'top', offset:[0,-8]})
@@ -865,7 +878,7 @@ function addToCal(mid,sid){
   const title=`${m.title} – IFFI`, where=[s.venue,s.screen].filter(Boolean).join(', '), link=location.origin+location.pathname+'#film='+slug(m.title);
   if(/Android/i.test(navigator.userAgent)){ window.open('https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(title)+'&dates='+f(st)+'/'+f(en)+'&location='+encodeURIComponent(where)+'&details='+encodeURIComponent(link), '_blank', 'noopener'); return; }
   const e = v => String(v).replace(/[\\;,]/g,c=>'\\'+c).replace(/\n/g,'\\n');
-  const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//IFFI Diary//EN','BEGIN:VEVENT','UID:'+sid+'-'+slug(m.title)+'@iffidiary','DTSTAMP:'+f(new Date()),'DTSTART:'+f(st),'DTEND:'+f(en),'SUMMARY:'+e(title),'LOCATION:'+e(where),'DESCRIPTION:'+e(link),'BEGIN:VALARM','TRIGGER:-PT1H','ACTION:DISPLAY','DESCRIPTION:'+e(title),'END:VALARM','END:VEVENT','END:VCALENDAR'].join('\r\n');
+  const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Festival Diaries Goa//EN','BEGIN:VEVENT','UID:'+sid+'-'+slug(m.title)+'@festivaldiaries','DTSTAMP:'+f(new Date()),'DTSTART:'+f(st),'DTEND:'+f(en),'SUMMARY:'+e(title),'LOCATION:'+e(where),'DESCRIPTION:'+e(link),'BEGIN:VALARM','TRIGGER:-PT1H','ACTION:DISPLAY','DESCRIPTION:'+e(title),'END:VALARM','END:VEVENT','END:VCALENDAR'].join('\r\n');
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([ics],{type:'text/calendar'})); a.download=slug(m.title)+'.ics'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
 function shareFilm(mid){
@@ -1121,7 +1134,7 @@ $('#file').onchange = async e => {
       if(!window._quiet) toast(`Imported ${added} new film${added===1?'':'s'}${updated?`, updated ${updated}`:''}`);
     }
     save(); render();
-  }catch(err){ alert('That file is not a valid IFFI Diary backup or film list.'); }
+  }catch(err){ alert('That file is not a valid Festival Diaries backup or film list.'); }
   e.target.value=''; window._forceMerge=false; window._quiet=false;
 };
 async function loadOfficial(){
@@ -1136,7 +1149,7 @@ function exportICS(){
   const ev = allScreenings().filter(x=>x.s.booked||x.s.going);
   if(!ev.length) return toast('Mark some shows as Going or Booked first');
   const f = d => d.toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'');
-  const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//IFFI Diary//EN'];
+  const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Festival Diaries Goa//EN'];
   for(const x of ev) lines.push('BEGIN:VEVENT',`UID:${x.s.id}@iffi-diary`,`DTSTAMP:${f(new Date())}`,`DTSTART:${f(x.start)}`,`DTEND:${f(x.end)}`,
     `SUMMARY:${(x.s.booked?'🎟 ':'')+x.m.title}`,`LOCATION:${[x.s.venue,x.s.screen].filter(Boolean).join(' - ')}`,`DESCRIPTION:${[x.m.director&&'Dir. '+x.m.director,x.m.section,x.s.seat&&'Seat '+x.s.seat].filter(Boolean).join(' | ')}`,'END:VEVENT');
   lines.push('END:VCALENDAR');
