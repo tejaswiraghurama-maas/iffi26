@@ -303,6 +303,24 @@ body:not(.guest) .dsign{display:none!important}
 .seenrow{text-align:center;margin:8px 0 12px}.seenrow .linkbtn{color:var(--muted);font-size:15px;text-decoration:underline;padding:6px}
 .myrate{margin-top:16px}.myrate .linkbtn{color:var(--muted);font-size:14px}
 .vlink{color:var(--blue);text-decoration:underline}
+.vstrip{display:grid;grid-auto-flow:column;grid-auto-columns:220px;gap:10px;overflow-x:auto;padding:2px 2px 10px;margin-bottom:16px;scrollbar-width:thin;scroll-snap-type:x proximity}
+@media (max-width:640px){.vstrip{grid-auto-columns:72%}}
+.vcard{scroll-snap-align:start;display:flex;align-items:center;gap:10px;text-align:left;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;color:var(--text);cursor:pointer;min-height:64px}
+.vcard:hover{border-color:#bbb}
+.vtx{min-width:0;display:flex;flex-direction:column}.vtx b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.vtx small{color:var(--muted);font-size:13.5px}
+.vic{flex:none;width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#eef2f0;color:var(--green)}
+.vic.k-open{background:#fdf3e1;color:#a5620c}.vic.k-event{background:#eef0fb;color:#4553a6}
+.vic.big{width:52px;height:52px;border-radius:14px}
+.vhead{display:flex;gap:14px;align-items:center;padding-right:40px}.vhead h2{margin:0;font-size:22px;line-height:1.2}
+.vabout{font-size:16px;line-height:1.5;margin:14px 0 12px}
+.vdir{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--text);padding:10px 16px;font-size:16px;font-weight:600}
+.vlist-h{font-weight:700;font-size:17px;margin:20px 0 4px}
+.vday{font-weight:700;color:var(--muted);font-size:14px;text-transform:uppercase;letter-spacing:.4px;margin:14px 0 4px}
+.vrow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:10px 2px;font:inherit;color:var(--text);cursor:pointer}
+.vrow:hover{background:var(--bg2)}
+.vt{flex:none;width:76px;display:flex;flex-direction:column}.vt b{font-size:16px}.vt small{color:var(--muted);font-size:13px}
+.vm{flex:1;min-width:0;display:flex;flex-direction:column}.vm b{font-size:16px}.vm small{color:var(--muted);font-size:13.5px}
+.vnone{color:var(--muted);font-size:15.5px;background:var(--bg);border:1px dashed var(--line);border-radius:10px;padding:14px;margin-top:12px}
 .myrate{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:16px;font-weight:600}
 .sec-h{display:flex;align-items:baseline;gap:8px;font-size:19px;margin:4px 0 10px}
 .sec-h span{color:var(--muted);font-weight:500;font-size:15px}
@@ -423,7 +441,7 @@ const hasShows = () => db.movies.some(m=>(m.screenings||[]).some(s=>s.date));
 function setView(v){ const ch=state.view!==v; state.view=v; persistUI(); if(ch) window.scrollTo(0,0); render(); }
 function persistUI(){ try{ localStorage.setItem(KEY+'-ui', JSON.stringify({view:state.view,showPast:state.showPast,onlyMine:state.onlyMine,mineTab:state.mineTab})); }catch(e){} }
 
-$('#home').onclick = e => { e.preventDefault(); if($('#scrim').classList.contains('open')) closeModal(); if($('#sheet')?.classList.contains('open')) closeSheet(); state.q=''; $('#q').value=''; state.genre=state.country=state.section=''; state.now=false; setView('all'); window.scrollTo({top:0,behavior:'smooth'}); };
+$('#home').onclick = e => { e.preventDefault(); if($('#scrim').classList.contains('open')) closeModal(); if($('#sheet')?.classList.contains('open')) closeSheet(); state.q=''; $('#q').value=''; state.genre=state.country=state.section=state.venue=''; state.now=false; setView('all'); window.scrollTo({top:0,behavior:'smooth'}); };
 $('#tabs').onclick = e => { const b=e.target.closest('button'); if(b) setView(b.dataset.v); };
 $('#q').oninput = e => { state.q = e.target.value; render(); };
 $('#menuBtn').onclick = e => { e.stopPropagation(); const o=$('#menu').classList.toggle('open'); $('#menuBtn').setAttribute('aria-expanded', o); };
@@ -449,6 +467,52 @@ function render(){
   const y=window.scrollY; $('#main').innerHTML = v(); tick(); if(y) window.scrollTo(0,y);
 }
 
+/* ---------- venues ---------- */
+const VENUES = [
+  {id:'inox-panaji', name:'INOX Panaji', area:'Panaji', kind:'cinema', re:/inox.*(panaji|gmc)|old gmc|gmc heritage/i, map:'INOX Panaji, Old GMC Heritage Precinct, Panaji, Goa', about:'The main festival hub in the GMC Heritage Precinct, with multiple screens.'},
+  {id:'maquinez', name:'Maquinez Palace', area:'Panaji', kind:'cinema', re:/maquinez/i, map:'Maquinez Palace, Entertainment Society of Goa, Panaji, Goa', about:'A heritage screening venue inside the Entertainment Society of Goa (ESG) complex.'},
+  {id:'samrat-ashoka', name:'Samrat & Ashoka', area:'Panaji', kind:'cinema', re:/samrat|ashoka?\b/i, map:'Samrat Ashok Cinema, Dada Vaidya Road, Panaji, Goa', about:'Twin cinema screens on Dada Vaidya Road.'},
+  {id:'inox-porvorim', name:'INOX Porvorim', area:'Porvorim', kind:'cinema', re:/porvorim|mall de goa/i, map:'INOX Mall De Goa, Porvorim, Goa', about:'Four multiplex screens inside Mall De Goa.'},
+  {id:'ravindra-margao', name:'Ravindra Bhavan', area:'Margao', kind:'cinema', re:/ravindra(?!.*open)/i, map:'Ravindra Bhavan, Fatorda, Margao, Goa', about:'A major cultural auditorium serving South Goa, in Fatorda.'},
+  {id:'magic-ponda', name:'Magic Movies', area:'Ponda', kind:'cinema', re:/magic movies|ponda/i, map:'Magic Movies, Ponda, Goa', about:'The main indoor cinema for festival-goers in Central Goa.'},
+  {id:'miramar', name:'Miramar Beach', area:'Panaji', kind:'open', re:/miramar/i, map:'Miramar Beach, Panaji, Goa', about:'Popular open-air beach screenings near the main festival hub.'},
+  {id:'anjuna', name:'Anjuna Beach', area:'North Goa', kind:'open', re:/anjuna/i, map:'Anjuna Beach, Goa', about:'Evening seaside screenings for visitors and locals.'},
+  {id:'vagator', name:'Vagator Beach Helipad', area:'North Goa', kind:'open', re:/vagator/i, map:'Vagator Beach Helipad, Goa', about:'A large open-air cinema ground overlooking the coast.'},
+  {id:'ravindra-open', name:'Ravindra Bhavan Open Space', area:'Margao', kind:'open', re:/ravindra.*open|open.*ravindra/i, map:'Ravindra Bhavan, Fatorda, Margao, Goa', about:'An outdoor screening area inside the Margao cultural complex.'},
+  {id:'kala-academy', name:'Kala Academy', area:'Campal, Panaji', kind:'event', re:/kala academy/i, map:'Kala Academy, Campal, Panaji, Goa', about:'The hub for masterclasses, workshops, panel discussions and in-conversation sessions, and for delegate pass collection (21–27 Nov).'},
+  {id:'spm-stadium', name:'Dr. Shyama Prasad Mukherjee Indoor Stadium', area:'Taleigao', kind:'event', re:/mukherjee|indoor stadium|taleigao/i, map:'Dr. Shyama Prasad Mukherjee Indoor Stadium, Taleigao, Goa', about:'Host venue for the opening and closing ceremonies.'},
+  {id:'taj-cidade', name:'Taj Cidade de Goa Horizon', area:'Dona Paula', kind:'event', re:/cidade|taj\b/i, map:'Taj Cidade de Goa Horizon, Dona Paula, Goa', about:'Official curtain-raiser events and select press gatherings.'},
+];
+const VKIND = {cinema:'Cinema', open:'Open-air', event:'Events & ceremonies'};
+const venueOf = v => { if(!v) return null; const o=VENUES.find(x=>x.id==='ravindra-open'); if(o.re.test(v)) return o; return VENUES.find(x=>x.re.test(v)) || null; };
+const venueById = id => VENUES.find(x=>x.id===id);
+const venueShows = vid => allScreenings().filter(x=>venueOf(x.s.venue)?.id===vid);
+const VICON = {cinema:'<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/>', open:'<circle cx="12" cy="9" r="3.5"/><path d="M12 2.5v1.5M12 14v1.5M5.5 9H4M20 9h-1.5M7.4 4.4l1 1M15.6 4.4l-1 1M3 20c3-2 6-2 9 0s6 2 9 0"/>', event:'<path d="M12 3.6l2.6 5.2 5.8.9-4.2 4.1 1 5.7L12 16.8l-5.2 2.7 1-5.7-4.2-4.1 5.8-.9z"/>'};
+const vIcon = (k,sz=20) => `<svg viewBox="0 0 24 24" width="${sz}" height="${sz}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${VICON[k]}</svg>`;
+function venuesStrip(){
+  const has = hasShows();
+  return `<h2 class="sec-h">Venues <span>${VENUES.length}</span></h2><div class="vstrip">${VENUES.map(v=>{ const n=has?new Set(venueShows(v.id).map(x=>x.m.id)).size:0; return `<button class="vcard" onclick="openVenue('${v.id}')"><span class="vic k-${v.kind}">${vIcon(v.kind)}</span><span class="vtx"><b>${esc(v.name)}</b><small>${esc(v.area)} · ${n?n+' film'+(n>1?'s':''):VKIND[v.kind]}</small></span></button>`; }).join('')}</div>`;
+}
+function openVenue(id){
+  const v = venueById(id); if(!v) return;
+  const n = now(), shows = venueShows(id).filter(x=>x.end>n || state.showPast);
+  let body = '';
+  if(shows.length){
+    let day='';
+    for(const x of shows){
+      const d=x.start.toDateString();
+      if(d!==day){ day=d; body += `<div class="vday">${fmtDay(x.start)}${d===n.toDateString()?' · Today':''}</div>`; }
+      const live = x.start<=n && x.end>n;
+      body += `<button class="vrow" onclick="openDetail('${x.m.id}')"><span class="vt"><b>${fmtTime(x.start)}</b><small>– ${fmtTime(x.end)}</small></span><span class="vm"><b>${esc(x.m.title)}</b><small>${[x.s.screen, x.m.language, runtime(x.m)+' min'].filter(Boolean).map(esc).join(' · ')}</small></span>${live?'<span class="tag booked">Now</span>':x.s.going||x.s.booked?'<span class="tag plan">Going</span>':''}</button>`;
+    }
+  } else {
+    body = `<div class="vnone">${v.kind==='event' ? 'No film screenings are listed here.' : hasShows() ? 'No upcoming screenings listed here.' : 'Schedule not announced yet. Films and showtimes will appear here as soon as IFFI publishes them.'}</div>`;
+  }
+  openModal(`<div class="vhead"><span class="vic big k-${v.kind}">${vIcon(v.kind,26)}</span><div><h2>${esc(v.name)}</h2><div class="dmeta">${esc(v.area)} · ${VKIND[v.kind]}</div></div></div>
+    <p class="vabout">${esc(v.about)}</p>
+    <a class="btn vdir" href="${mapUrl(v.map)}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg>Directions</a>
+    ${v.kind!=='event'||shows.length?`<div class="vlist-h">Films showing here</div>`:''}${body}`);
+}
 const secGroup = s => !s ? '' : /^Indian Panorama/.test(s) ? 'Indian Panorama' : /^(Opening Film|Mid Fest Film|Closing Film|Special Screenings)$/.test(s) ? 'Galas & specials' : s;
 const secOK = m => !state.section || secGroup(m.section)===state.section;
 const GENRES = [['Drama',/drama/i],['Documentary',/documentary|docu/i],['Comedy',/comed/i],['Thriller',/thriller|mystery|noir/i],['Horror',/horror|gothic/i],['Sci-fi',/sci-fi/i],['Fantasy',/fantasy|supernatural/i],['Animation',/anim/i],['Experimental',/experimental|slow cinema/i],['Crime',/crime/i],['Romance',/roman/i],['Family',/family|children/i],['Action & adventure',/action|adventure|spy|epic/i],['Mythological',/mytholog/i],['Music & dance',/music|dance/i],['War & history',/war |war\/|war$|historical|period/i],['Coming of age',/coming-of-age/i],['Classics',/classic/i]];
@@ -456,7 +520,7 @@ const genreTags = m => GENRES.filter(([,r])=>r.test(m.genre||'')).map(([g])=>g);
 const countries = m => String(m.country||'').split(',').map(x=>x.trim()).filter(Boolean);
 const NOW_WIN = 2*3600e3;
 const nowShows = m => { const n=now(); return (m.screenings||[]).filter(s=>{ const st=dt(s), en=endOf(m,s); return en>n && st-n<NOW_WIN; }); };
-const fOK = m => secOK(m) && (!state.genre || genreTags(m).includes(state.genre)) && (!state.country || countries(m).includes(state.country)) && (!state.now || nowShows(m).length);
+const fOK = m => secOK(m) && (!state.genre || genreTags(m).includes(state.genre)) && (!state.country || countries(m).includes(state.country)) && (!state.now || nowShows(m).length) && (!state.venue || (m.screenings||[]).some(s=>venueOf(s.venue)?.id===state.venue));
 function countOpts(fn){ const c={}; for(const m of db.movies) for(const v of fn(m)) c[v]=(c[v]||0)+1; return c; }
 function filterBar(extra='', right=''){
   const sec=countOpts(m=>{ const g=secGroup(m.section); return g?[g]:[]; }), gen=countOpts(genreTags), cty=countOpts(countries);
@@ -466,18 +530,22 @@ function filterBar(extra='', right=''){
     genre:['Genre',[['','All genres',db.movies.length],...az(gen)]],
     country:['Country',[['','All countries',db.movies.length],...az(cty)]],
     section:['Track',[['','All tracks',db.movies.length],...az(sec)]],
+    venue:['Venue',[['','All venues',db.movies.length],...VENUES.filter(v=>v.kind!=='event').map(v=>[v.id,v.name,new Set(venueShows(v.id).map(x=>x.m.id)).size]).filter(o=>o[2])]],
   };
-  const sel = ['genre','country','section'].filter(k=>state[k]);
+  if(state.venue && !hasShows()) state.venue='';
+  const sel = ['genre','country','section','venue'].filter(k=>state[k]);
   const X = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
   return `<div class="filters"><div class="frow">
     ${hasShows()?`<button class="fpill now ${state.now?'set':''}" aria-pressed="${!!state.now}" onclick="state.now=!state.now;render()" title="Showing now or starting in the next 2 hours"><span class="dot"></span>Now</button>`:''}
     <button class="fpill" aria-haspopup="dialog" onclick="openFilters(this)"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Filters${sel.length?` · ${sel.length}`:''}</button>
-    ${sel.map(k=>`<button class="fpill set x" aria-label="Remove ${esc(state[k])}" onclick="state.${k}='';render()">${esc(state[k])}${X}</button>`).join('')}
+    ${sel.map(k=>`<button class="fpill set x" aria-label="Remove ${esc(state[k])}" onclick="state.${k}='';render()">${esc(k==='venue'?(venueById(state.venue)?.name||state.venue):state[k])}${X}</button>`).join('')}
   </div></div>`;
 }
-const FTABS = [['genre','Genre'],['country','Country'],['section','Track']];
+const FTABS_ALL = [['genre','Genre'],['country','Country'],['section','Track'],['venue','Venue']];
+let FTABS = FTABS_ALL.slice(0,3);
 function openFilters(btn, tab){
   filterBar._o || filterBar();
+  FTABS = hasShows() ? FTABS_ALL : FTABS_ALL.slice(0,3);
   tab = tab || openFilters._t || 'genre'; openFilters._t = tab; openFilters._b = btn || openFilters._b;
   const sh=$('#sheet'), o=filterBar._o[tab][1], cur=state[tab]||'';
   const count = db.movies.filter(fOK).length, nsel = FTABS.filter(([k])=>state[k]).length;
@@ -499,7 +567,7 @@ function openFilters(btn, tab){
 function renderSchedule(){
   const n = now(), cl = clashes();
   let items = allScreenings().filter(x => x.m.status!=='watched' || x.start<n);
-  items = items.filter(x => matches(x.m) && tagOK(x.m) && (!state.venue || x.s.venue===state.venue) && fOK(x.m) && (!state.now || (x.end>now() && x.start-now()<NOW_WIN)));
+  items = items.filter(x => matches(x.m) && tagOK(x.m) && (!state.venue || venueOf(x.s.venue)?.id===state.venue) && fOK(x.m) && (!state.now || (x.end>now() && x.start-now()<NOW_WIN)));
   if(state.onlyMine && cloud.user) items = items.filter(x => x.s.booked || x.s.going);
   if(!state.showPast) items = items.filter(x => x.end > n);
   const days=[...new Set(items.map(x=>localISO(x.start)))].sort(), today=localISO(n);
@@ -583,7 +651,7 @@ function cardHtml(m, badge){
 const byTitle = (a,b) => a.title.localeCompare(b.title);
 const byNext = (a,b) => (nextScreening(a)?.start ?? Infinity) - (nextScreening(b)?.start ?? Infinity) || byTitle(a,b);
 function renderGrid(kind){
-  const filtering = state.q.trim() || (kind==='all' && ['genre','country','section','now'].some(k=>state[k]));
+  const filtering = state.q.trim() || (kind==='all' && ['genre','country','section','now','venue'].some(k=>state[k]));
   let list = db.movies.filter(m => (kind==='all' ? fOK(m) : m.status===kind) && matches(m));
   if(kind==='watched') list.sort((a,b)=>(b.watchedOn||'').localeCompare(a.watchedOn||'') || byTitle(a,b));
   else list.sort(kind==='want' && hasShows() ? byNext : byTitle);
@@ -597,6 +665,7 @@ function renderGrid(kind){
   if(kind==='all' && !filtering){
     const rec = db.movies.filter(m=>m.recRank).sort((a,b)=>a.recRank-b.recRank);
     if(rec.length) html += `<h2 class="sec-h">Recommended <span>${rec.length}</span></h2><div class="strip">${rec.map(m=>cardHtml(m, `#${m.recRank}`)).join('')}</div><h2 class="sec-h">All films <span>${list.length}</span></h2>`;
+    html = html.replace('<h2 class="sec-h">All films', venuesStrip()+'<h2 class="sec-h">All films');
   }
   return html + `<div class="grid">${list.map(m=>cardHtml(m)).join('')}</div>`;
 }
@@ -720,6 +789,8 @@ function shareFilm(mid){
   else window.open('https://wa.me/?text='+encodeURIComponent(text+'\n'+url), '_blank', 'noopener');
 }
 function openFromHash(){
+  const hv = (location.hash.match(/venue=([^&]+)/)||[])[1];
+  if(hv){ history.replaceState(null,'',location.pathname+location.search); openVenue(decodeURIComponent(hv)); return; }
   const h = (location.hash.match(/film=([^&]+)/)||[])[1]; if(!h) return;
   const m = db.movies.find(x=>slug(x.title)===decodeURIComponent(h));
   history.replaceState(null,'',location.pathname+location.search);
@@ -772,7 +843,7 @@ function openDetail(id){
     const st=dt(s), en=endOf(m,s), past=en<n;
     return `<div class="scr" style="${past?'opacity:.55':''}">
       <div><b>${fmtShort(st)}, ${fmtTime(st)}</b> <span style="color:var(--muted)">– ${fmtTime(en)}</span><br>
-        <span style="color:var(--muted);font-size:15px">📍 ${s.venue?`<a class="vlink" href="${mapUrl(s.venue)}" target="_blank" rel="noopener">${esc(s.venue)}</a>`:'Venue TBA'}${s.screen?' · '+esc(s.screen):''}${s.seat?' · Seat '+esc(s.seat):''}</span>
+        <span style="color:var(--muted);font-size:15px">📍 ${s.venue?(venueOf(s.venue)?`<a class="vlink" href="#venue=${venueOf(s.venue).id}" onclick="event.preventDefault();openVenue('${venueOf(s.venue).id}')">${esc(s.venue)}</a>`:`<a class="vlink" href="${mapUrl(s.venue)}" target="_blank" rel="noopener">${esc(s.venue)}</a>`):'Venue TBA'}${s.screen?' · '+esc(s.screen):''}${s.seat?' · Seat '+esc(s.seat):''}</span>
         <span style="font-size:14px;margin-left:6px">${s.source?srcLink(s.source,'Source'):'<span style="color:var(--muted)">· no source</span>'}</span>
         <div>${s.booked?'<span class="tag booked">Booked</span>':s.going?'<span class="tag plan">Going</span>':''}${cl.has(s.id)?'<span class="tag clash">Clash</span>':''}${m.watchedAt===s.id?'<span class="tag booked">Watched here</span>':''}</div>
       </div>
