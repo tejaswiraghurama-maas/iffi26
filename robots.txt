@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://tejaswiraghurama-maas.github.io/iffi26/sitemap.xml
