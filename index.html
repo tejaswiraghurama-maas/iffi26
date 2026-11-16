@@ -290,6 +290,19 @@ body:not(.guest) .dsign{display:none!important}
 .pk-search{padding:10px 16px 4px}
 .pk-search input{width:100%;border:1px solid #c9c9c9;border-radius:10px;padding:10px 12px;font-size:16px;outline:none}
 .pk-opt[hidden]{display:none}
+.dposter{position:relative;display:block;color:inherit;text-decoration:none}
+.play{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:inline-flex;align-items:center;gap:5px;background:rgba(0,0,0,.66);color:#fff;border-radius:999px;padding:5px 11px 5px 9px;font-size:13px;font-weight:700;white-space:nowrap;-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+.dposter:hover .play{background:rgba(0,0,0,.85)}
+.modal .shr{position:absolute;top:10px;right:48px;width:36px;height:36px;border:0;background:none;color:var(--muted);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.modal .shr:hover{background:var(--bg2);color:var(--text)}
+.dhead{padding-right:0!important}.dinfo h2{padding-right:64px}
+.pbtn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:52px;margin:16px 0 0;border-radius:10px;border:1px solid var(--green);background:var(--green);color:#fff;font:inherit;font-size:17px;font-weight:700;cursor:pointer;padding:10px 14px}
+.pbtn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pbtn.on,.pbtn.going{background:#e8f3ec;color:var(--green)}
+.pbtn.going b{font-weight:800}.pbtn.going span{font-weight:600}
+.seenrow{text-align:center;margin:8px 0 12px}.seenrow .linkbtn{color:var(--muted);font-size:15px;text-decoration:underline;padding:6px}
+.myrate{margin-top:16px}.myrate .linkbtn{color:var(--muted);font-size:14px}
+.vlink{color:var(--blue);text-decoration:underline}
 .myrate{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:16px;font-weight:600}
 .sec-h{display:flex;align-items:baseline;gap:8px;font-size:19px;margin:4px 0 10px}
 .sec-h span{color:var(--muted);font-weight:500;font-size:15px}
@@ -688,6 +701,17 @@ function askSignIn(mid,st){
   openModal(`<div class="ask"><h2>${st==='watched'?'Keep track of what you watch':'Save films to your list'}</h2><p>Sign in with Google so your list is saved to your account and works on all your devices.</p><button class="btn primary" onclick="cloudToggle()">Sign in with Google</button><button class="btn" onclick="${m&&back?`openDetail('${m.id}')`:'closeModal()'}">Not now</button></div>`);
 }
 const slug = t => String(t||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+const ytUrl = m => 'https://www.youtube.com/results?search_query=' + encodeURIComponent(`${m.title} ${m.director||''} trailer`.replace(/\s+/g,' '));
+const mapUrl = v => 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(/goa/i.test(v) ? v : v+', Goa');
+function addToCal(mid,sid){
+  const m=find(mid), s=m&&(m.screenings||[]).find(x=>x.id===sid); if(!s) return;
+  const st=dt(s), en=endOf(m,s), f=d=>d.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
+  const title=`${m.title} – IFFI`, where=[s.venue,s.screen].filter(Boolean).join(', '), link=location.origin+location.pathname+'#film='+slug(m.title);
+  if(/Android/i.test(navigator.userAgent)){ window.open('https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(title)+'&dates='+f(st)+'/'+f(en)+'&location='+encodeURIComponent(where)+'&details='+encodeURIComponent(link), '_blank', 'noopener'); return; }
+  const e = v => String(v).replace(/[\\;,]/g,c=>'\\'+c).replace(/\n/g,'\\n');
+  const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//IFFI Diary//EN','BEGIN:VEVENT','UID:'+sid+'-'+slug(m.title)+'@iffidiary','DTSTAMP:'+f(new Date()),'DTSTART:'+f(st),'DTEND:'+f(en),'SUMMARY:'+e(title),'LOCATION:'+e(where),'DESCRIPTION:'+e(link),'BEGIN:VALARM','TRIGGER:-PT1H','ACTION:DISPLAY','DESCRIPTION:'+e(title),'END:VALARM','END:VEVENT','END:VCALENDAR'].join('\r\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([ics],{type:'text/calendar'})); a.download=slug(m.title)+'.ics'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
 function shareFilm(mid){
   const m=find(mid); if(!m) return;
   const url = location.origin + location.pathname + '#film=' + slug(m.title);
@@ -722,9 +746,10 @@ function openDetail(id){
   const cs = String(m.country||'').split(',').map(x=>x.trim()).filter(Boolean);
   const meta = [m.genre, cs.length ? cs[0]+(cs.length>1?` +${cs.length-1}`:'') : '', m.language, m.year, m.runtime?m.runtime+' min':''].filter(Boolean).map(esc).join(' · ');
   const extra = [m.originalTitle?`<div><b>Original title:</b> ${esc(m.originalTitle)}</div>`:'', cs.length>1?`<div><b>Countries:</b> ${esc(cs.join(', '))}</div>`:'', m.cast?`<div><b>Cast:</b> ${esc(m.cast)}</div>`:'', m.festivals?`<div><b>Festivals:</b> ${esc(String(m.festivals).replace(/\s*\|\s*/g,', '))}</div>`:'', m.notes?`<div>${esc(m.notes)}</div>`:''].join('');
+  const going = scr.find(s=>(s.going||s.booked) && endOf(m,s)>n);
   const I = d => `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
-  openModal(`<div class="dhead">
-    <div class="dposter">${poster(m)}</div>
+  openModal(`<button class="shr" aria-label="Share this film" title="Share" onclick="shareFilm('${m.id}')">${I('<path d="M12 15V3.5M7.5 8L12 3.5 16.5 8"/><path d="M5 12.5v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>')}</button><div class="dhead">
+    <a class="dposter" href="${ytUrl(m)}" target="_blank" rel="noopener" aria-label="Watch the trailer of ${esc(m.title)} on YouTube">${poster(m)}<span class="play"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z" fill="currentColor"/></svg>Trailer</span></a>
     <div class="dinfo">
       <h2>${esc(m.title)}</h2>
       ${meta?`<div class="dmeta">${meta}</div>`:''}
@@ -733,26 +758,27 @@ function openDetail(id){
       ${confirmInfo(m)?`<span class="tag booked" style="margin-top:6px">✓ Screening confirmed</span>`:''}
     </div>
   </div>
-  <div class="statusbar">
-    <button class="sbtn want ${m.status==='want'?'on':''}" aria-pressed="${m.status==='want'}" onclick="setStatus('${m.id}','want')">${I(m.status==='want'?'<path d="M6.5 3.5h11v17l-5.5-4-5.5 4z" fill="currentColor"/>':'<path d="M6.5 3.5h11v17l-5.5-4-5.5 4z"/>')}<span>${m.status==='want'?'Saved':'Save'}</span></button>
-    <button class="sbtn watched ${m.status==='watched'?'on':''}" aria-pressed="${m.status==='watched'}" onclick="setStatus('${m.id}','watched')">${I('<circle cx="12" cy="12" r="8.5"/><path d="M8.4 12.3l2.5 2.5 4.7-4.9"/>')}<span>Watched</span></button>
-    <button class="sbtn share" onclick="shareFilm('${m.id}')">${I('<path d="M12 15V3.5M7.5 8L12 3.5 16.5 8"/><path d="M5 12.5v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>')}<span>Share</span></button>
-  </div>
+  ${m.status==='watched'
+    ? `<div class="myrate"><span>✓ You’ve seen this</span><div class="rate">${starsHtml}</div><button class="linkbtn" onclick="setStatus('${m.id}','watched')">Undo</button></div>`
+    : `${going
+      ? `<button class="pbtn going" onclick="document.getElementById('dshows')?.scrollIntoView({behavior:'smooth',block:'start'})">${I('<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>')}<span><b>Going</b> · ${fmtShort(dt(going))} · ${fmtTime(dt(going))}${going.venue?' · '+esc(going.venue):''}</span></button>`
+      : `<button class="pbtn ${m.status==='want'?'on':''}" aria-pressed="${m.status==='want'}" onclick="setStatus('${m.id}','want')">${I(m.status==='want'?'<path d="M5 12.5l4.5 4.5L19 7.5"/>':'<path d="M6.5 3.5h11v17l-5.5-4-5.5 4z"/>')}<span>${m.status==='want'?'On my list':'Want to see'}</span></button>`}
+      <div class="seenrow"><button class="linkbtn" onclick="setStatus('${m.id}','watched')">Already seen it?</button></div>`}
   ${m.synopsis||extra?`<div class="dsyn"><p class="syn clamp">${esc(m.synopsis||'')}</p><div class="dextra" hidden>${extra}</div><button class="linkbtn rmore" onclick="const d=this.parentNode;const o=d.classList.toggle('open');d.querySelector('.dextra').hidden=!o;this.textContent=o?'Show less':'Read more'">Read more</button></div>`:''}
   ${ratingsBlock(m)}
   ${m.status==='watched' ? `<div class="myrate"><span>Your rating</span><div class="rate">${starsHtml}</div></div>` : ''}
-  ${scr.length?'<div style="font-weight:700;margin:14px 0 4px">Showtimes</div>':''}
+  ${scr.length?'<div id="dshows" style="font-weight:700;margin:14px 0 4px;scroll-margin-top:12px">Showtimes</div>':''}
   <div>${scr.length ? scr.map(s=>{
     const st=dt(s), en=endOf(m,s), past=en<n;
     return `<div class="scr" style="${past?'opacity:.55':''}">
       <div><b>${fmtShort(st)}, ${fmtTime(st)}</b> <span style="color:var(--muted)">– ${fmtTime(en)}</span><br>
-        <span style="color:var(--muted);font-size:15px">📍 ${esc(s.venue||'Venue TBA')}${s.screen?' · '+esc(s.screen):''}${s.seat?' · Seat '+esc(s.seat):''}</span>
+        <span style="color:var(--muted);font-size:15px">📍 ${s.venue?`<a class="vlink" href="${mapUrl(s.venue)}" target="_blank" rel="noopener">${esc(s.venue)}</a>`:'Venue TBA'}${s.screen?' · '+esc(s.screen):''}${s.seat?' · Seat '+esc(s.seat):''}</span>
         <span style="font-size:14px;margin-left:6px">${s.source?srcLink(s.source,'Source'):'<span style="color:var(--muted)">· no source</span>'}</span>
         <div>${s.booked?'<span class="tag booked">Booked</span>':s.going?'<span class="tag plan">Going</span>':''}${cl.has(s.id)?'<span class="tag clash">Clash</span>':''}${m.watchedAt===s.id?'<span class="tag booked">Watched here</span>':''}</div>
       </div>
       <div class="acts" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${past
         ? (m.status!=='watched'?`<button class="btn sm" onclick="quickWatched('${m.id}','${s.id}')">✓ Watched this</button>`:'')
-        : `<button class="btn sm" onclick="toggleS('${m.id}','${s.id}','going')">${s.going?'✓ Going':'+ Going'}</button><button class="btn sm" onclick="toggleS('${m.id}','${s.id}','booked')">${s.booked?'🎟 Booked':'Book'}</button>`}</div>
+        : `<button class="btn sm" onclick="toggleS('${m.id}','${s.id}','going')">${s.going?'✓ Going':'+ Going'}</button><button class="btn sm" onclick="toggleS('${m.id}','${s.id}','booked')">${s.booked?'🎟 Booked':'Book'}</button>${s.going||s.booked?`<button class="btn sm" onclick="addToCal('${m.id}','${s.id}')">📅 Add to calendar</button>`:''}`}</div>
     </div>`;}).join('') : ''}</div>
   `);
 }
