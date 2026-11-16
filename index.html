@@ -26,7 +26,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 a{color:var(--blue)}
 header{position:sticky;top:0;padding-top:env(safe-area-inset-top);z-index:20;background:rgba(255,255,255,.97);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 .bar{max-width:1180px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.logo{display:flex;align-items:center;gap:8px;font-weight:800;letter-spacing:.3px;font-size:21px}
+.logo{color:inherit;text-decoration:none;cursor:pointer;display:flex;align-items:center;gap:8px;font-weight:800;letter-spacing:.3px;font-size:21px}
 .dots{display:flex;gap:3px}.dots i{width:12px;height:12px;border-radius:50%;display:block}
 .dots i:nth-child(1){background:var(--orange)}.dots i:nth-child(2){background:var(--green)}.dots i:nth-child(3){background:var(--blue)}
 nav{display:flex;gap:4px;flex-wrap:wrap}
@@ -293,7 +293,7 @@ body:not(.guest) .dsign{display:none!important}
 <body class="guest">
 <header>
   <div class="bar">
-    <div class="logo">IFFI Diary</div>
+    <a class="logo" id="home" href="./" aria-label="IFFI Diary – home">IFFI Diary</a>
     <nav id="tabs" aria-label="Main">
       <button data-v="all" class="on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg><span class="lbl">All</span></button>
       <button data-v="rec"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6l2.6 5.2 5.8.9-4.2 4.1 1 5.7L12 16.8l-5.2 2.7 1-5.7-4.2-4.1 5.8-.9z"/></svg><span class="lbl">Recommended</span></button>
@@ -394,6 +394,7 @@ function setLayout(l){ state.layout=l; persistUI(); render(); }
 function setView(v){ state.view=v; persistUI(); render(); }
 function persistUI(){ try{ localStorage.setItem(KEY+'-ui', JSON.stringify({view:state.view,showPast:state.showPast,onlyMine:state.onlyMine,sort:state.sort,layout:state.layout})); }catch(e){} }
 
+$('#home').onclick = e => { e.preventDefault(); if($('#scrim').classList.contains('open')) closeModal(); if($('#sheet')?.classList.contains('open')) closeSheet(); state.q=''; $('#q').value=''; state.genre=state.country=state.section=''; state.now=false; setView('all'); window.scrollTo({top:0,behavior:'smooth'}); };
 $('#tabs').onclick = e => { const b=e.target.closest('button'); if(b) setView(b.dataset.v); };
 $('#q').oninput = e => { state.q = e.target.value; render(); };
 $('#menuBtn').onclick = e => { e.stopPropagation(); const o=$('#menu').classList.toggle('open'); $('#menuBtn').setAttribute('aria-expanded', o); };
