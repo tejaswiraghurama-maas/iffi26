@@ -317,83 +317,137 @@ function openFilters(btn, tab){
 }
 
 function renderSchedule(){
-  const shows = hasShows(), mode = shows ? (state.smode||'time') : 'venue';
-  const seg = shows ? `<div class="mseg" role="tablist"><button role="tab" aria-selected="${mode==='time'}" class="${mode==='time'?'on':''}" onclick="state.smode='time';render()">By time</button><button role="tab" aria-selected="${mode==='venue'}" class="${mode==='venue'?'on':''}" onclick="state.smode='venue';render()">By venue</button></div>` : '';
-  if(mode==='venue') return seg + (shows ? '' : `<div class="soon"><b>Showtimes coming soon</b><span>IFFI hasn’t published the 2026 schedule yet. Here are the festival venues – tap one for directions.</span></div>`) + renderVenues();
+  const shows = hasShows();
+  if(!shows) return `<div class="soon"><b>Showtimes coming soon</b><span>IFFI hasn’t published the 2026 schedule yet. Here are the festival venues – tap one for directions.</span></div>` + renderVenues();
+  const n = now(), myUp = allScreenings().filter(x => x.s.going && x.end>n && x.m.status!=='watched').length;
+  if(!state.smode) state.smode = (cloud.user && myUp) ? 'plan' : 'time';
+  const mode = state.smode;
+  const tab = (k,l,extra='') => `<button role="tab" aria-selected="${mode===k}" class="${mode===k?'on':''}" onclick="state.smode='${k}';window.scrollTo(0,0);render()">${l}${extra}</button>`;
+  const seg = `<div class="mseg sseg" role="tablist">${tab('plan','My plan', myUp?`<small>${myUp}</small>`:'')}${tab('time','All shows')}${tab('venue','By venue')}</div>`;
+  if(mode==='venue') return seg + renderVenues();
+  if(mode==='plan') return seg + renderPlan();
   return seg + renderScheduleTime();
 }
+/* a time button: tap to mark / unmark Going */
+function timeChip(x, cl, n){
+  const live = x.start<=n && x.end>n, past = x.end<=n;
+  const v = venueOf(x.s.venue), place = [v?.name || x.s.venue || 'Venue TBA', x.s.screen].filter(Boolean).join(' · ');
+  const cls = ['tchip', x.s.going&&'going', cl.has(x.s.id)&&'clash', live&&'live', past&&'past'].filter(Boolean).join(' ');
+  const lab = `${fmtTime(x.start)}, ${place}${x.s.going?', going – tap to remove':', tap to mark as going'}`;
+  const act = past ? (x.m.status==='watched' ? `openDetail('${x.m.id}')` : `quickWatched('${x.m.id}','${x.s.id}')`) : `pickTime('${x.m.id}','${x.s.id}')`;
+  return `<button class="${cls}" aria-pressed="${!!x.s.going}" aria-label="${esc(lab)}" onclick="event.stopPropagation();${act}"><b>${fmtTime(x.start)}</b><span>${esc(place)}</span>${x.s.going?'<i>✓ Going</i>':live?'<i>Now showing</i>':past&&x.m.status!=='watched'?'<i>Mark watched</i>':cl.has(x.s.id)?'<i>Clash</i>':''}</button>`;
+}
+function pickTime(mid, sid){
+  if(!cloud.user) return askSignIn(mid, 'want', sid);
+  toggleS(mid, sid, 'going');
+  const s = find(mid)?.screenings.find(y=>y.id===sid);
+  if(s?.going && !clashes().has(sid)) toast('Added to My plan');
+}
+/* one card per film per day, with all its times as buttons */
+function filmGroup(g, cl, n){
+  const m = g.m, going = g.items.some(x=>x.s.going);
+  const notes = [...new Set(g.items.map(x=>x.s.note).filter(Boolean))];
+  const meta = [runtime(m)+' min', m.language, m.section].filter(Boolean).map(esc).join(' · ');
+  const tags = (m.status==='want'?'<span class="tag saved">Saved</span>':'') + (m.status==='watched'?'<span class="tag booked">Watched</span>':'');
+  return `<div class="fgroup ${going?'has-going':''}">
+    <div class="fg-head" onclick="openDetail('${m.id}')">
+      <div class="mini">${poster(m,true)}</div>
+      <div class="info"><div class="t">${esc(m.title)}</div><div class="meta">${meta}</div>${tags?`<div class="fg-tags">${tags}</div>`:''}</div>
+    </div>
+    ${notes.map(t=>`<div class="snote">${esc(t)}</div>`).join('')}
+    <div class="tchips">${g.items.map(x=>timeChip(x,cl,n)).join('')}</div>
+  </div>`;
+}
+function dayChipsHtml(days, today){
+  if(days.length<2) return '';
+  const planDays = new Set(allScreenings().filter(x=>x.s.going).map(x=>localISO(x.start)));
+  return `<div class="daybar"><div class="chips"><button class="chip ${!state.day?'on':''}" onclick="state.day='';render()">All days</button>${days.map(d=>{ const dd=new Date(d+'T12:00'); return `<button class="chip ${state.day===d?'on':''}" onclick="state.day='${d}';window.scrollTo(0,0);render()">${d===today?'Today':dd.toLocaleDateString('en-IN',{weekday:'short',day:'numeric'})}${planDays.has(d)?'<i class="pdot" title="You have a show planned"></i>':''}</button>`; }).join('')}</div></div>`;
+}
+function earlierLink(hidden){
+  if(state.showPast) return `<button class="earlier" onclick="state.showPast=false;persistUI();render()">Hide earlier shows ▴</button>`;
+  return hidden ? `<button class="earlier" onclick="state.showPast=true;persistUI();render()">Earlier shows (${hidden}) ▾</button>` : '';
+}
 function renderScheduleTime(){
-  const n = now(), cl = clashes();
+  const n = now(), cl = clashes(), today = localISO(n);
   let items = allScreenings().filter(x => x.m.status!=='watched' || x.start<n);
   items = items.filter(x => matches(x.m) && tagOK(x.m) && (!state.venue || venueOf(x.s.venue)?.id===state.venue) && fOK(x.m) && (!state.now || (x.end>now() && x.start-now()<NOW_WIN)));
-  if(state.onlyMine && cloud.user) items = items.filter(x => x.s.booked || x.s.going);
-  if(!state.showPast) items = items.filter(x => x.end > n);
-  const days=[...new Set(items.map(x=>localISO(x.start)))].sort(), today=localISO(n);
-  if(state.day===undefined) state.day = days.includes(today) ? today : '';
-  if(state.day && !days.includes(state.day)) state.day='';
-  const dayChips = days.length>1 ? `<div class="chips" style="margin-bottom:12px"><button class="chip ${!state.day?'on':''}" onclick="state.day='';render()">All days</button>${days.map(d=>{ const dd=new Date(d+'T12:00'); return `<button class="chip ${state.day===d?'on':''}" onclick="state.day='${d}';render()">${d===today?'Today':dd.toLocaleDateString('en-IN',{weekday:'short',day:'numeric'})}</button>`; }).join('')}</div>` : '';
+  const allDays = [...new Set(items.map(x=>localISO(x.start)))].sort();
+  const daysShown = state.showPast ? allDays : allDays.filter(d => d>=today);
+  const days = daysShown.length ? daysShown : allDays;
+  if(state.day===undefined) state.day = days.find(d=>d>=today) || '';
+  if(state.day && !days.includes(state.day)) state.day = days.find(d=>d>=today) || '';
   if(state.day) items = items.filter(x => localISO(x.start)===state.day);
-  else items = items.filter(x => x.m.status!=='watched' || x.start<n);
+  const hidden = state.showPast ? 0 : items.filter(x => x.end<=n).length;
+  if(!state.showPast) items = items.filter(x => x.end>n);
 
-  const upcomingMine = allScreenings().filter(x => x.start>n && x.m.status!=='watched' && (x.s.booked||x.s.going));
-  const next = upcomingMine[0] || allScreenings().find(x => x.start>n && x.m.status==='want');
-
-  let html = filterBar() + `<div class="schopts">
-    <label class="mineonly"><input type="checkbox" ${state.onlyMine?'checked':''} onchange="state.onlyMine=this.checked;persistUI();render()"> Only shows I’m going to</label>
-    <label><input type="checkbox" ${state.showPast?'checked':''} onchange="state.showPast=this.checked;persistUI();render()"> Show past shows</label></div>` + dayChips;
-
-  if(next && !state.q){
-    html += `<div class="hero" onclick="openDetail('${next.m.id}')" style="cursor:pointer">
-      ${poster(next.m)}
-      <div style="flex:1;min-width:0">
-        <div class="k">${next.s.going?'Next on your plan':'Next on your watchlist'}</div>
-        <h3>${esc(next.m.title)}</h3>
-        <div class="meta" style="color:var(--muted)">${fmtShort(next.start)} · ${fmtTime(next.start)} · ${esc(next.s.venue||'')}${next.s.screen?' · '+esc(next.s.screen):''}</div>
-        <div class="cdline"><span class="cd" data-cd="${next.start.getTime()}"></span> to showtime</div>
-      </div>
-    </div>`;
-  }
-
-  const noFilter = !state.q && !state.tag && !state.onlyMine && !state.now && !state.genre && !state.country && !state.section && !state.venue;
+  let html = filterBar() + dayChipsHtml(days, today) + earlierLink(hidden);
+  const noFilter = !state.q && !state.tag && !state.now && !state.genre && !state.country && !state.section && !state.venue;
   const evs = noFilter ? EVENTS.filter(e => (state.showPast || evEnd(e)>n) && (!state.day || e.d===state.day)) : [];
   if(!items.length && !evs.length){
     return html + (db.movies.length
       ? `<div class="empty"><h3>${allScreenings().length?'No shows match':'Schedule not announced yet'}</h3>${allScreenings().length?'Try another day or section.':'Showtimes will appear here as soon as IFFI publishes them.'}</div>`
       : `<div class="empty"><h3>No films yet</h3>The film list is loading. Refresh the page if it doesn't appear.</div>`);
   }
-
-  let day='';
-  const list = [...items, ...evs.map(e=>({ev:e, start:evStart(e)}))].sort((a,b)=>a.start-b.start);
-  for(const x of list){
-    const d = x.start.toDateString();
-    if(d!==day){
-      day=d;
-      const count = items.filter(y=>y.start.toDateString()===d).length;
-      html += `<h2 class="day"><span>${fmtDay(x.start)}${d===n.toDateString()?' · Today':''}</span><span>${count?count+' show'+(count>1?'s':''):''}</span></h2>`;
-    }
-    if(x.ev){ html += evRow(x.ev, true); continue; }
-    const past = x.end < n, live = x.start<=n && x.end>n;
-    const tags = [
-      x.s.going ? `<span class="tag plan">Going</span>` : '',
-      cl.has(x.s.id) ? `<span class="tag clash">Clash</span>` : '',
-      live ? `<span class="tag booked">Now showing</span>` : '',
-      x.m.status==='watched' ? `<span class="tag booked">Watched</span>`:'',
-    ].join('');
-    html += `<div class="row ${past?'past':''}" onclick="openDetail('${x.m.id}')">
-      <div class="time"><b>${fmtTime(x.start).replace(/\s?[AP]M/i,'')}</b><small>${fmtTime(x.start).match(/[AP]M/i)?.[0]||''} – ${fmtTime(x.end)}</small></div>
-      <div class="mini">${poster(x.m,true)}</div>
-      <div class="info">
-        <div class="t">${esc(x.m.title)}</div>
-        <div class="meta">📍 ${esc(x.s.venue||'Venue TBA')}${x.s.screen?' · '+esc(x.s.screen):''} · ${runtime(x.m)} min${x.m.language?' · '+esc(x.m.language):''}</div>
-        ${x.s.note?`<div class="snote">${esc(x.s.note)}</div>`:''}
-        <div style="margin-top:4px">${tags}${x.m.section?`<span class="tag sec">${esc(x.m.section)}</span>`:''}</div>
-      </div>
-      <div class="acts" onclick="event.stopPropagation()">
-        ${x.m.status==='watched' ? '' : past
-          ? `<button class="btn sm" onclick="quickWatched('${x.m.id}','${x.s.id}')">✓ Mark watched</button>`
-          : `<button class="btn sm" onclick="toggleS('${x.m.id}','${x.s.id}','going')">${x.s.going?'✓ Going':'+ Going'}</button>`}
+  // group: day → film
+  const byDay = new Map();
+  for(const x of items){ const d=localISO(x.start); if(!byDay.has(d)) byDay.set(d,new Map()); const g=byDay.get(d); if(!g.has(x.m.id)) g.set(x.m.id,{m:x.m,start:x.start,items:[]}); g.get(x.m.id).items.push(x); }
+  for(const e of evs) if(!byDay.has(e.d)) byDay.set(e.d,new Map());
+  for(const d of [...byDay.keys()].sort()){
+    const groups = [...byDay.get(d).values()], nShows = groups.reduce((t,g)=>t+g.items.length,0);
+    const dd = new Date(d+'T12:00');
+    html += `<h2 class="day"><span>${fmtDay(dd)}${d===today?' · Today':''}</span><span>${groups.length?`${groups.length} film${groups.length>1?'s':''} · ${nShows} show${nShows>1?'s':''}`:''}</span></h2>`;
+    const list = [...groups.map(g=>({g,start:g.start})), ...evs.filter(e=>e.d===d).map(e=>({ev:e,start:evStart(e)}))].sort((a,b)=>a.start-b.start);
+    for(const x of list) html += x.ev ? evRow(x.ev, true) : filmGroup(x.g, cl, n);
+  }
+  return html;
+}
+function renderPlan(){
+  const n = now(), cl = clashes(), today = localISO(n);
+  if(!cloud.user) return `<div class="empty ask" style="max-width:440px;margin:24px auto"><h2>Plan your festival</h2><p>Sign in, then tap any showtime in All shows to add it here. Your plan works on all your devices.</p><button class="btn primary" onclick="askSignIn()">Sign in</button><button class="btn" onclick="state.smode='time';render()">Browse all shows</button></div>`;
+  const mine = allScreenings().filter(x => x.s.going && x.m.status!=='watched');
+  const hidden = state.showPast ? 0 : mine.filter(x=>x.end<=n).length;
+  const list = state.showPast ? mine : mine.filter(x=>x.end>n);
+  let html = '';
+  const next = list.find(x=>x.start>n);
+  if(next) html += `<div class="hero" onclick="openDetail('${next.m.id}')" style="cursor:pointer">
+      ${poster(next.m)}
+      <div style="flex:1;min-width:0">
+        <div class="k">Next on your plan</div>
+        <h3>${esc(next.m.title)}</h3>
+        <div class="meta" style="color:var(--muted)">${dayWord(next.start)} · ${fmtTime(next.start)} · ${esc(next.s.venue||'')}${next.s.screen?' · '+esc(next.s.screen):''}</div>
+        <div class="cdline"><span class="cd" data-cd="${next.start.getTime()}"></span> to showtime</div>
       </div>
     </div>`;
+  html += earlierLink(hidden);
+  if(!list.length){
+    html += `<div class="empty"><h3>Your plan is empty</h3>Open <b>All shows</b> and tap a showtime to add it here.<div style="margin-top:14px"><button class="btn primary" onclick="state.smode='time';render()">Browse all shows</button></div></div>`;
+  } else {
+    let day='';
+    for(const x of list){
+      const d = localISO(x.start);
+      if(d!==day){ day=d; const c=list.filter(y=>localISO(y.start)===d).length; html += `<h2 class="day"><span>${fmtDay(x.start)}${d===today?' · Today':''}</span><span>${c} show${c>1?'s':''}</span></h2>`; }
+      const past = x.end<=n, live = x.start<=n && !past;
+      html += `<div class="prow ${past?'past':''} ${cl.has(x.s.id)?'clash':''}" onclick="openDetail('${x.m.id}')">
+        <div class="time"><b>${fmtTime(x.start)}</b><small>– ${fmtTime(x.end)}</small></div>
+        <div class="info"><div class="t">${esc(x.m.title)}</div>
+          <div class="meta">📍 ${esc(venueOf(x.s.venue)?.name||x.s.venue||'Venue TBA')}${x.s.screen?' · '+esc(x.s.screen):''} · ${runtime(x.m)} min</div>
+          ${x.s.note?`<div class="snote">${esc(x.s.note)}</div>`:''}
+          ${cl.has(x.s.id)?'<div class="pwarn">⚠️ Overlaps another show, or too little time to travel</div>':''}
+          ${live?'<span class="tag booked">Now showing</span>':''}</div>
+        <div class="acts" onclick="event.stopPropagation()">${past
+          ? `<button class="btn sm" onclick="quickWatched('${x.m.id}','${x.s.id}')">✓ Watched</button>`
+          : `<button class="btn sm" onclick="toggleS('${x.m.id}','${x.s.id}','going');toast('Removed from My plan')">Remove</button>`}</div>
+      </div>`;
+    }
+  }
+  // saved films that still need a showtime
+  const goingIds = new Set(mine.filter(x=>x.end>n).map(x=>x.m.id));
+  const pick = db.movies.filter(m => m.status==='want' && !goingIds.has(m.id))
+    .map(m => ({m, items: allScreenings().filter(x=>x.m===m && x.end>n)}))
+    .filter(g => g.items.length).sort((a,b)=>a.items[0].start-b.items[0].start);
+  if(pick.length){
+    html += `<h2 class="day sub"><span>Saved films – pick a showtime</span><span>${pick.length}</span></h2>`;
+    for(const g of pick) html += filmGroup({m:g.m, items:g.items}, cl, n);
   }
   return html;
 }
@@ -496,6 +550,8 @@ function tick(){ document.querySelectorAll('[data-cd]').forEach(el=>{
   el.textContent = d ? `${d}d ${h}h ${m}m` : `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 }); }
 setInterval(tick, 1000);
+const setHdr = () => document.documentElement.style.setProperty('--hdr', (document.querySelector('header')?.offsetHeight||64)+'px');
+addEventListener('resize', setHdr); setHdr();
 
 /* ---------- actions ---------- */
 const find = id => db.movies.find(m=>m.id===id);
@@ -524,8 +580,8 @@ function setStatus(mid,st){
 function setRating(mid,r){ if(!cloud.user) return askSignIn(mid,'watched'); const m=find(mid); m.rating = m.rating===r ? 0 : r; if(m.status!=='watched'){ m.status='watched'; m.watchedOn=m.watchedOn||localISO();} save(); render(); openDetail(mid); }
 function toggleLike(mid){ const m=find(mid); m.liked=!m.liked; save(); render(); openDetail(mid); }
 function quickSave(mid){ if(!cloud.user) return askSignIn(mid,'want'); const m=find(mid); if(!m) return; m.status = m.status==='want' ? 'none' : 'want'; save(); render(); toast(m.status==='want'?'Saved to My list':'Removed from My list'); }
-function askSignIn(mid,st){
-  const m=find(mid), back=$('#scrim').classList.contains('open'); cloud.pending = m ? {t:m.title.toLowerCase(), st} : null;
+function askSignIn(mid,st,sid){
+  const m=find(mid), back=$('#scrim').classList.contains('open'); const sc=sid&&m?.screenings.find(y=>y.id===sid); cloud.pending = m ? {t:m.title.toLowerCase(), st, sk:sc?skey(sc):''} : null;
   openModal(`<div class="ask"><h2>${st==='watched'?'Keep track of what you watch':m?'Save films to your list':'Sign in to save your list'}</h2><p>Sign in with Google so your list is saved to your account and works on all your devices.</p><button class="btn primary" onclick="cloudToggle()">Continue with Google</button><button class="btn" onclick="${m&&back?`openDetail('${m.id}')`:'closeModal()'}">Not now</button>${CONSENT_NOTE}</div>`);
 }
 const slug = t => String(t||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
@@ -983,7 +1039,7 @@ async function onUser(u){
     cloud.unsub = onSnapshot(ref, s=>{ if(!s.metadata.hasPendingWrites && s.exists()) applyRemote(s.data()); });
     const pd = cloud.pending; cloud.pending = null;
     const pm = pd && db.movies.find(m=>m.title.toLowerCase()===pd.t);
-    if(pm){ pm.status = pd.st; if(pd.st==='watched' && !pm.watchedOn) pm.watchedOn = localISO(); save(); render(); openDetail(pm.id); toast(pd.st==='want'?'Signed in – saved to My list':'Signed in – marked as watched'); }
+    if(pm){ pm.status = pd.st; if(pd.st==='watched' && !pm.watchedOn) pm.watchedOn = localISO(); const ps = pd.sk && pm.screenings.find(y=>skey(y)===pd.sk); if(ps) ps.going=true; save(); render(); if(ps){ if($('#scrim').classList.contains('open')) closeModal(); toast('Signed in – added to My plan'); } else { openDetail(pm.id); toast(pd.st==='want'?'Signed in – saved to My list':'Signed in – marked as watched'); } }
     else if(cloud.agreed){ if($('#scrim').classList.contains('open') && $('#modal .ask')) closeModal(); toast('Signed in – your list is saved online'); }
     if(!cloud.consent) askConsent();   // signed in before the privacy notice existed
   }catch(e){ console.warn(e); toast('Could not reach online storage'); }

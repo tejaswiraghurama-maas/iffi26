@@ -27,7 +27,7 @@ nav a .n{font-size:13px;color:var(--muted);margin-left:5px;font-weight:500}
 .btn.primary{background:var(--green);border-color:var(--green);color:#fff}
 .btn.danger{color:var(--red)}
 .btn.sm{padding:7px 12px;font-size:14.5px}
-main{max-width:1180px;margin:0 auto;padding:18px 16px 80px;overflow-x:hidden}
+main{max-width:1180px;margin:0 auto;padding:18px 16px 80px;overflow-x:hidden;overflow-x:clip}
 .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
 .filters label{background:var(--bg);border:1px solid #c9c9c9;border-radius:9px;padding:8px 12px;font-size:15px}
 .filters label{display:flex;gap:6px;align-items:center;cursor:pointer}
@@ -359,6 +359,39 @@ body:not(.guest) .dsign{display:none!important}
 .priv h3{font-size:17px;margin:20px 0 4px}.priv p{margin:0 0 8px}.priv ul{margin:0 0 8px;padding-left:20px}.priv li{margin:2px 0}
 .priv .pact{border-top:1px solid var(--line);margin-top:22px;padding-top:16px}.priv .pact .btn{width:100%;padding:13px;font-size:16px}
 .btn.danger,.menu .dd button.danger{color:var(--red)}
+.sseg{max-width:480px}
+.daybar{position:sticky;top:var(--hdr,64px);z-index:6;background:var(--bg);padding:8px 0;margin-bottom:6px;border-bottom:1px solid var(--line)}
+.daybar .chip{position:relative;padding:9px 15px}
+.pdot{position:absolute;top:3px;right:5px;width:8px;height:8px;border-radius:50%;background:var(--green);border:1.5px solid #fff}
+.chip.on .pdot{border-color:var(--text)}
+.earlier{display:block;background:none;border:0;padding:10px 2px;font:inherit;font-size:15px;font-weight:600;color:var(--green);cursor:pointer}
+.fgroup{background:var(--bg2);border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:10px}
+.fgroup.has-going{border-left:5px solid var(--green);padding-left:10px}
+.fg-head{display:flex;gap:12px;align-items:center;cursor:pointer}
+.fg-head .mini{width:44px;flex:none}.fg-head .info{flex:1;min-width:0}
+.fg-head .t{font-weight:700;font-size:17px;line-height:1.3}.fg-head .meta{color:var(--muted);font-size:14.5px}
+.fg-tags{margin-top:4px}.fg-tags .tag{margin-bottom:0}
+.tag.saved{background:var(--brand-tint);color:var(--green);font-weight:600}
+.fgroup .snote{margin:8px 0 0}
+.tchips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.tchip{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-height:48px;min-width:118px;padding:7px 12px;border:1.5px solid #c9c9c9;border-radius:10px;background:#fff;font:inherit;color:var(--text);cursor:pointer;text-align:left}
+.tchip b{font-size:17px;font-variant-numeric:tabular-nums;line-height:1.2}
+.tchip span{font-size:13px;color:var(--muted);line-height:1.25}
+.tchip i{font-style:normal;font-size:12.5px;font-weight:700;margin-top:2px}
+.tchip:hover{border-color:var(--green)}
+.tchip.going{background:var(--green);border-color:var(--green);color:#fff}.tchip.going span{color:#e3e6f7}
+.tchip.clash{border-color:var(--red)}.tchip.clash:not(.going) i{color:var(--red)}.tchip.going.clash{box-shadow:0 0 0 2px var(--red)}
+.tchip.live:not(.going) i{color:#d93025}
+.tchip.past{opacity:.6}
+.prow{display:flex;gap:14px;align-items:center;background:var(--bg2);border:1px solid var(--line);border-left:5px solid var(--green);border-radius:var(--radius);padding:12px;margin-bottom:8px;cursor:pointer}
+.prow.past{opacity:.55}.prow.clash{border-left-color:var(--red)}
+.prow .time{width:70px;flex:none}.prow .time b{display:block;font-size:18px;font-variant-numeric:tabular-nums}.prow .time small{color:var(--muted);font-size:14px}
+.prow .info{flex:1;min-width:0}.prow .t{font-weight:700;font-size:17px}.prow .meta{color:var(--muted);font-size:15px}
+.prow .acts .btn{min-height:44px}
+.pwarn{color:var(--red);font-size:14px;margin-top:3px}
+h2.day.sub{margin-top:26px}
+@media (min-width:641px){ .fgroup{display:grid;grid-template-columns:minmax(240px,1fr) minmax(0,auto);column-gap:16px;align-items:center} .fgroup .snote{grid-column:1;grid-row:2} .fgroup .tchips{grid-column:2;grid-row:1/span 2;margin-top:0;justify-content:flex-end;max-width:640px} }
+@media (max-width:640px){ .tchip{flex:1 1 calc(50% - 8px);min-width:0} .prow{flex-wrap:wrap}.prow .acts{width:100%}.prow .acts .btn{width:100%} }
 .snote{font-size:14px;color:var(--muted);margin-top:3px;line-height:1.35}
 .vm .snote{display:block;margin-top:2px}
 .myrate{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:16px;font-weight:600}
