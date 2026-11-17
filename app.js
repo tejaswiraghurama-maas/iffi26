@@ -483,11 +483,34 @@ function renderGrid(kind){
   }
   return html + `<div class="grid">${list.map(m=>cardHtml(m)).join('')}</div>`;
 }
+/* ---------- share the To-watch list as a message ---------- */
+function watchlistText(){
+  const n = now();
+  const list = db.movies.filter(m=>m.status==='want').sort(hasShows()?byNext:byTitle);
+  const lines = list.map((m,i)=>{
+    const ups = allScreenings().filter(x=>x.m===m && x.end>n);
+    const pick = ups.find(x=>x.s.going) || ups[0];
+    const when = pick ? `${fmtShort(pick.start)}, ${fmtTime(pick.start)} · ${venueOf(pick.s.venue)?.name||pick.s.venue||''}${pick.s.going?' (I’m going)':''}` : 'showtime to be announced';
+    return `${i+1}. ${m.title}${m.director?' – '+m.director:''}\n   ${when}\n   ${filmURL(m)}`;
+  });
+  return `My IFFI Goa 2026 watchlist 🎬\n\n${lines.join('\n\n')}\n\nPlan yours: ${ROOT}`;
+}
+async function shareWatchlist(){
+  const text = watchlistText(), title = 'My IFFI Goa 2026 watchlist';
+  if(navigator.share){ try{ await navigator.share({title, text}); }catch(e){} return; }
+  openModal(`<div class="ask"><h2>Share your list</h2><p>Send it on WhatsApp, or copy it to paste anywhere.</p>
+    <button class="btn primary" onclick="window.open('https://wa.me/?text='+encodeURIComponent(watchlistText()),'_blank','noopener');closeModal()">Send on WhatsApp</button>
+    <button class="btn" onclick="copyWatchlist()">Copy list</button></div>`);
+}
+async function copyWatchlist(){
+  try{ await navigator.clipboard.writeText(watchlistText()); toast('List copied'); closeModal(); }
+  catch(e){ toast('Could not copy – try WhatsApp instead'); }
+}
 function renderMine(){
   if(!cloud.user) return `<div class="empty ask" style="max-width:420px;margin:30px auto"><h2>Your list lives here</h2><p>Sign in with Google to save films and keep track of what you’ve watched – on any device.</p><button class="btn primary" onclick="cloudToggle()">Continue with Google</button>${CONSENT_NOTE}</div>`;
   const nw = db.movies.filter(m=>m.status==='want').length, nd = db.movies.filter(m=>m.status==='watched').length;
   const t = state.mineTab==='watched' ? 'watched' : 'want';
-  return `<div class="mseg" role="tablist"><button role="tab" aria-selected="${t==='want'}" class="${t==='want'?'on':''}" onclick="state.mineTab='want';persistUI();render()">To watch<small>${nw}</small></button><button role="tab" aria-selected="${t==='watched'}" class="${t==='watched'?'on':''}" onclick="state.mineTab='watched';persistUI();render()">Watched<small>${nd}</small></button></div>` + renderGrid(t);
+  return `<div class="mseg" role="tablist"><button role="tab" aria-selected="${t==='want'}" class="${t==='want'?'on':''}" onclick="state.mineTab='want';persistUI();render()">To watch<small>${nw}</small></button><button role="tab" aria-selected="${t==='watched'}" class="${t==='watched'?'on':''}" onclick="state.mineTab='watched';persistUI();render()">Watched<small>${nd}</small></button></div>` + (t==='want' && nw ? `<div class="sharebar"><span>${nw} film${nw>1?'s':''} you want to see</span><button class="btn primary" onclick="shareWatchlist()"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>Share my list</button></div>` : '') + renderGrid(t);
 }
 
 const statusLabel = m => m.status==='watched' ? 'Watched' : m.status==='want' ? 'Watchlist' : '';

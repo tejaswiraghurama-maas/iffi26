@@ -392,6 +392,10 @@ body:not(.guest) .dsign{display:none!important}
 h2.day.sub{margin-top:26px}
 @media (min-width:641px){ .fgroup{display:grid;grid-template-columns:minmax(240px,1fr) minmax(0,auto);column-gap:16px;align-items:center} .fgroup .snote{grid-column:1;grid-row:2} .fgroup .tchips{grid-column:2;grid-row:1/span 2;margin-top:0;justify-content:flex-end;max-width:640px} }
 @media (max-width:640px){ .tchip{flex:1 1 calc(50% - 8px);min-width:0} .prow{flex-wrap:wrap}.prow .acts{width:100%}.prow .acts .btn{width:100%} }
+.sharebar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:-4px 0 14px}
+.sharebar span{color:var(--muted);font-size:15px}
+.sharebar .btn{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 18px;font-size:16px}
+@media (max-width:640px){ .sharebar .btn{width:100%;justify-content:center} }
 .snote{font-size:14px;color:var(--muted);margin-top:3px;line-height:1.35}
 .vm .snote{display:block;margin-top:2px}
 .myrate{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:16px;font-weight:600}
