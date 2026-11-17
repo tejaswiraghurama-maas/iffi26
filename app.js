@@ -19,7 +19,7 @@ const fmtTime = d => d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}
 const fmtDay = d => d.toLocaleDateString([], {weekday:'long', day:'numeric', month:'short'});
 const fmtShort = d => d.toLocaleDateString([], {weekday:'short', day:'numeric', month:'short'});
 const runtime = m => +m.runtime || 120;
-const endOf = (m,s) => new Date(dt(s).getTime() + runtime(m)*60000);
+const endOf = (m,s) => new Date(dt(s).getTime() + (+s.dur || runtime(m))*60000);   // s.dur = whole programme when films are shown together
 const stars = r => r ? '★'.repeat(Math.floor(r)) + (r%1 ? '½' : '') : '';
 function toast(t){ const el=$('#toast'); el.textContent=t; el.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('show'),2200); }
 function hue(str){ let h=0; for(const c of str) h=(h*31+c.charCodeAt(0))%360; return h; }
@@ -137,20 +137,41 @@ function render(){
 
 /* ---------- venues ---------- */
 const VENUES = [
-  {id:'inox-panaji', lat:15.49868, lon:73.82117, g:'pan', travel:'', name:'INOX Panaji', area:'Panaji', kind:'cinema', re:/inox.*(panaji|gmc)|old gmc|gmc heritage/i, map:'INOX Panaji, Old GMC Heritage Precinct, Panaji, Goa', about:'The main festival hub in the GMC Heritage Precinct, with multiple screens.'},
-  {id:'maquinez', lat:15.49947, lon:73.82134, g:'pan', travel:'Next to INOX Panaji', name:'Maquinez Palace', area:'Panaji', kind:'cinema', re:/maquinez/i, map:'Maquinez Palace, Entertainment Society of Goa, Panaji, Goa', about:'A heritage screening venue inside the Entertainment Society of Goa (ESG) complex.'},
-  {id:'samrat-ashoka', lat:15.49707, lon:73.82385, g:'pan', travel:'Short walk from INOX Panaji', name:'Samrat & Ashoka', area:'Panaji', kind:'cinema', re:/samrat|ashoka?\b/i, map:'Samrat Ashok Cinema, Dada Vaidya Road, Panaji, Goa', about:'Twin cinema screens on Dada Vaidya Road.'},
-  {id:'inox-porvorim', lat:15.52562, lon:73.82732, g:'por', travel:'About 20 min drive from INOX Panaji', name:'INOX Porvorim', area:'Porvorim', kind:'cinema', re:/porvorim|mall de goa/i, map:'INOX Mall De Goa, Porvorim, Goa', about:'Four multiplex screens inside Mall De Goa.'},
-  {id:'ravindra-margao', lat:15.28506, lon:73.96253, g:'mar', travel:'About 55 min drive from INOX Panaji', name:'Ravindra Bhavan', area:'Margao', kind:'cinema', re:/ravindra(?!.*open)/i, map:'Ravindra Bhavan, Fatorda, Margao, Goa', about:'A major cultural auditorium serving South Goa, in Fatorda.'},
-  {id:'magic-ponda', approx:true, lat:15.40355, lon:74.01017, g:'pon', travel:'About 1 hr drive from INOX Panaji', name:'Magic Movies', area:'Ponda', kind:'cinema', re:/magic movies|ponda/i, map:'Magic Movies, Ponda, Goa', about:'The main indoor cinema for festival-goers in Central Goa.'},
-  {id:'miramar', lat:15.4766, lon:73.80668, g:'pan', travel:'10 min drive from INOX Panaji', name:'Miramar Beach', area:'Panaji', kind:'open', re:/miramar/i, map:'Miramar Beach, Panaji, Goa', about:'Popular open-air beach screenings near the main festival hub.'},
-  {id:'anjuna', lat:15.5761, lon:73.74018, g:'nor', travel:'About 45 min drive from INOX Panaji', name:'Anjuna Beach', area:'North Goa', kind:'open', re:/anjuna/i, map:'Anjuna Beach, Goa', about:'Evening seaside screenings for visitors and locals.'},
-  {id:'vagator', lat:15.59765, lon:73.73349, g:'nor', travel:'About 45 min drive from INOX Panaji', name:'Vagator Beach Helipad', area:'North Goa', kind:'open', re:/vagator/i, map:'Vagator Beach Helipad, Goa', about:'A large open-air cinema ground overlooking the coast.'},
-  {id:'ravindra-open', lat:15.28506, lon:73.96253, g:'mar', travel:'About 55 min drive from INOX Panaji', name:'Ravindra Bhavan Open Space', area:'Margao', kind:'open', re:/ravindra.*open|open.*ravindra/i, map:'Ravindra Bhavan, Fatorda, Margao, Goa', about:'An outdoor screening area inside the Margao cultural complex.'},
-  {id:'kala-academy', lat:15.49421, lon:73.81741, g:'pan', travel:'5 min drive from INOX Panaji', name:'Kala Academy', area:'Campal, Panaji', kind:'event', re:/kala academy/i, map:'Kala Academy, Campal, Panaji, Goa', about:'The hub for masterclasses, workshops, panel discussions and in-conversation sessions, and for delegate pass collection (21–27 Nov).'},
-  {id:'spm-stadium', approx:true, lat:15.47027, lon:73.82257, g:'evt', travel:'10 min drive from INOX Panaji', name:'Dr. Shyama Prasad Mukherjee Indoor Stadium', area:'Taleigao', kind:'event', re:/mukherjee|indoor stadium|taleigao/i, map:'Dr. Shyama Prasad Mukherjee Indoor Stadium, Taleigao, Goa', about:'Host venue for the opening and closing ceremonies.'},
+  {id:'inox-panaji', lat:15.49868, lon:73.82117, g:'pan', travel:'', name:'INOX Panaji', area:'Panaji', kind:'cinema', re:/inox.*(panaji|gmc)|old gmc|gmc heritage/i, map:'INOX Panaji, Old GMC Heritage Precinct, Panaji, Goa', about:'PVR INOX Panjim, the main festival hub in the Old GMC Heritage Precinct, with four screens (Audi 1–4). Free delegate rickshaws: service lane in front of Old GMC.'},
+  {id:'maquinez', lat:15.49947, lon:73.82134, g:'pan', travel:'Next to INOX Panaji', name:'Maquinez Palace', area:'Panaji', kind:'cinema', re:/maquinez/i, map:'Maquinez Palace, Entertainment Society of Goa, Panaji, Goa', about:'A heritage screening venue inside the Entertainment Society of Goa (ESG) complex, next to INOX Panaji.'},
+  {id:'samrat-ashoka', lat:15.49707, lon:73.82385, g:'pan', travel:'Short walk from INOX Panaji', name:'Samrat Ashok', area:'Panaji', kind:'cinema', re:/samrat|ashoka?\b/i, map:'Samrat Ashok Cinema, Dada Vaidya Road, Panaji, Goa', about:'Twin screens, Samrat and Ashok, on Dada Vaidya Road. Free delegate rickshaws stop in front of Samrat Theatre.'},
+  {id:'inox-porvorim', lat:15.52562, lon:73.82732, g:'por', travel:'About 20 min drive from INOX Panaji', name:'INOX Porvorim', area:'Porvorim', kind:'cinema', re:/porvorim|mall de goa/i, map:'INOX Mall De Goa, Porvorim, Goa', about:'PVR INOX Porvorim: four screens (Audi 1–4) inside Mall De Goa. Free delegate rickshaws: side lane of Mall De Goa. Delegate bus Route 1 ends here.'},
+  {id:'ravindra-margao', lat:15.28506, lon:73.96253, g:'mar', travel:'About 55 min drive from INOX Panaji', name:'Ravindra Bhavan', area:'Margao', kind:'cinema', re:/ravindra(?!.*open)/i, map:'Ravindra Bhavan, Fatorda, Margao, Goa', about:'The main South Goa screening venue, in Fatorda. Delegate bus Route 3 runs here from Panaji.'},
+  {id:'magic-ponda', approx:true, lat:15.40355, lon:74.01017, g:'pon', travel:'About 1 hr drive from INOX Panaji', name:'Magic Moviez', area:'Ponda', kind:'cinema', re:/magic movie|ponda/i, map:'Magic Moviez, Ponda, Goa', about:'One festival film every evening at 6 PM, 21–27 Nov. Delegate bus Route 2 runs here from Panaji.'},
+  {id:'miramar', lat:15.4766, lon:73.80668, g:'pan', travel:'10 min drive from INOX Panaji', name:'Miramar Beach', area:'Panaji', kind:'open', re:/miramar/i, map:'Miramar Beach, Panaji, Goa', about:'Free open-air screening every evening at 7 PM, 21–27 Nov.'},
+  {id:'vagator', lat:15.59765, lon:73.73349, g:'nor', travel:'About 45 min drive from INOX Panaji', name:'Vagator Beach (Helipad)', area:'North Goa', kind:'open', re:/vagator/i, map:'Vagator Beach Helipad, Goa', about:'Free open-air screening every evening at 7 PM, 21–27 Nov.'},
+  {id:'ravindra-open', lat:15.28506, lon:73.96253, g:'mar', travel:'About 55 min drive from INOX Panaji', name:'Ravindra Bhavan Open Lawns', area:'Margao', kind:'open', re:/ravindra.*open|open.*ravindra/i, map:'Ravindra Bhavan, Fatorda, Margao, Goa', about:'Free open-air screening every evening at 7 PM, 21–27 Nov, on the lawns of Ravindra Bhavan.'},
+  {id:'kala-academy', lat:15.49421, lon:73.81741, g:'pan', travel:'5 min drive from INOX Panaji', name:'Kala Academy', area:'Campal, Panaji', kind:'event', re:/kala academy/i, map:'Kala Academy, Campal, Panaji, Goa', about:'Masterclasses, panel discussions and in-conversation sessions, 21–27 Nov, at 11:30 AM and 2:30 PM. Free delegate rickshaws stop in front of Kala Academy.'},
+  {id:'spm-stadium', approx:true, lat:15.47027, lon:73.82257, g:'evt', travel:'10 min drive from INOX Panaji', name:'Dr. Shyama Prasad Mukherjee Indoor Stadium', area:'Taleigao', kind:'event', re:/mukherjee|indoor stadium|taleigao/i, map:'Dr. Shyama Prasad Mukherjee Indoor Stadium, Taleigao, Goa', about:'Opening ceremony on 20 Nov and closing ceremony on 28 Nov, both from 5 PM.'},
   {id:'taj-cidade', lat:15.45614, lon:73.81422, g:'evt', travel:'15 min drive from INOX Panaji', name:'Taj Cidade de Goa Horizon', area:'Dona Paula', kind:'event', re:/cidade|taj\b/i, map:'Taj Cidade de Goa Horizon, Dona Paula, Goa', about:'Official curtain-raiser events and select press gatherings.'},
 ];
+/* ---------- talks & ceremonies (official IFFI 2026 schedule) ---------- */
+const EVENTS = [
+  {d:'2026-11-20',t:'17:00',v:'spm-stadium',k:'Ceremony',title:'Opening Ceremony'},
+  {d:'2026-11-21',t:'11:30',e:'13:00',v:'kala-academy',k:'In conversation',title:'The Moral Universe of Parallel Cinema: 50 Years of Girish Kasaravalli',who:'Speaker: Girish Kasaravalli · Moderator: Naman Ramachandran'},
+  {d:'2026-11-21',t:'14:30',e:'16:00',v:'kala-academy',k:'In conversation',title:'From Witness to Change: The Social Responsibility of Documentary Cinema',who:'Speaker: Julie Bertuccelli · Moderator: Haobam Paban Kumar'},
+  {d:'2026-11-22',t:'11:30',e:'13:00',v:'kala-academy',k:'Session',title:'Session 3 – details on the official IFFI website or app'},
+  {d:'2026-11-22',t:'14:30',e:'16:30',v:'kala-academy',k:'Round table',title:'The Unteachable Frame: Can Cinema Be Taught or Must It Be Discovered?',who:'Speakers: Dhiraj Singh, Santosh Ajmera, Anupam Kher, Amala Akkineni, Artur Zaborski, Manoj Paramahamsa · Moderator: Vikramjit Roy'},
+  {d:'2026-11-23',t:'11:30',e:'13:00',v:'kala-academy',k:'Panel discussion',title:'Goa in Cinema',who:'Speakers: Abhishek Pathak, Marianne Borgo, Rajendra Talak · Moderator: Sachin Chatte'},
+  {d:'2026-11-23',t:'14:30',e:'16:00',v:'kala-academy',k:'In conversation',title:'The Epic Genres – Mythologies, Superheroes & New Worlds',who:'Speakers: Ayan Mukerji, Basil Joseph · Moderator: Puja Talwar'},
+  {d:'2026-11-24',t:'11:30',e:'13:00',v:'kala-academy',k:'Panel discussion',title:'Her Lens, Her Legacy, Her Liberty: Women Shaping World Cinema',who:'Speakers: Narghiza Dotieva, Alina Șerban, Suzanne Andrews Correa · Moderator: Abhishek Jain'},
+  {d:'2026-11-24',t:'14:30',e:'16:00',v:'kala-academy',k:'Masterclass',title:'The Thin Borders Between Reality and Fiction',who:'Speaker: Bogdan Mureșanu'},
+  {d:'2026-11-25',t:'11:30',e:'13:00',v:'kala-academy',k:'Retrospective',title:'Lata Mangeshkar Talk: The Voice that Echoes Forever – in memory of Asha Bhosle & S Janaki',who:'Speaker: K. S. Chithra · Moderator: Suhasini Maniratnam'},
+  {d:'2026-11-25',t:'14:30',e:'16:00',v:'kala-academy',k:'Masterclass',title:'Words Across Borders: Subtitling Across Cultures',who:'Speaker: Rekhs'},
+  {d:'2026-11-26',t:'11:30',e:'13:00',v:'kala-academy',k:'Masterclass',title:'The Casting Magic: Auditions Unplugged',who:'Speaker: Mukesh Chhabra'},
+  {d:'2026-11-26',t:'14:30',e:'16:00',v:'kala-academy',k:'Masterclass',title:'Decoding Academy Awards',who:'Speaker: Natalie Wade'},
+  {d:'2026-11-27',t:'11:30',e:'13:00',v:'kala-academy',k:'Panel discussion',title:'The Legendary 25s',who:'Speakers: Farhan Akhtar, Ashutosh Gowariker, Madhur Bhandarkar · Moderator: Khushboo Sundar'},
+  {d:'2026-11-27',t:'14:30',e:'16:00',v:'kala-academy',k:'Interview session',title:'What If the Villain Is Right? The Unconventional Filmmaker Karthik Subbaraj',who:'Speaker: Karthik Subbaraj · Moderator: Sudhir Srinivasan'},
+  {d:'2026-11-28',t:'17:00',v:'spm-stadium',k:'Ceremony',title:'Closing Ceremony'},
+];
+const evStart = e => new Date(`${e.d}T${e.t}`);
+const evEnd = e => e.e ? new Date(`${e.d}T${e.e}`) : new Date(evStart(e).getTime()+150*60000);
+const evRow = (e, card) => `<div class="evrow ${card?'card-ev':''}"><span class="vt"><b>${fmtTime(evStart(e))}</b><small>${e.e?'– '+fmtTime(evEnd(e)):'onwards'}</small></span><span class="vm"><small class="evk">${esc(e.k)}${card?' · '+esc(venueById(e.v)?.name||''):''}</small><b>${esc(e.title)}</b>${e.who?`<small>${esc(e.who)}</small>`:''}</span></div>`;
 const VKIND = {cinema:'Cinema', open:'Open-air', event:'Events & ceremonies'};
 const VGROUPS = [['pan','Panaji','The festival hub – these venues are close together'],['por','Porvorim',''],['mar','Margao','South Goa'],['pon','Ponda','Central Goa'],['nor','North Goa beaches','Open-air evening screenings'],['evt','Ceremonies & events','']];
 const kmBetween = (a,b) => { const R=6371, r=Math.PI/180, dLa=(b.lat-a.lat)*r, dLo=(b.lon-a.lon)*r; const h=Math.sin(dLa/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLo/2)**2; return 2*R*Math.asin(Math.sqrt(h)); };
@@ -226,9 +247,12 @@ function openVenue(id){
       const d=x.start.toDateString();
       if(d!==day){ day=d; body += `<div class="vday">${fmtDay(x.start)}${d===n.toDateString()?' · Today':''}</div>`; }
       const live = x.start<=n && x.end>n;
-      body += `<button class="vrow" onclick="openDetail('${x.m.id}')"><span class="vt"><b>${fmtTime(x.start)}</b><small>– ${fmtTime(x.end)}</small></span><span class="vm"><b>${esc(x.m.title)}</b><small>${[x.s.screen, x.m.language, runtime(x.m)+' min'].filter(Boolean).map(esc).join(' · ')}</small></span>${live?'<span class="tag booked">Now</span>':x.s.going||x.s.booked?'<span class="tag plan">Going</span>':''}</button>`;
+      body += `<button class="vrow" onclick="openDetail('${x.m.id}')"><span class="vt"><b>${fmtTime(x.start)}</b><small>– ${fmtTime(x.end)}</small></span><span class="vm"><b>${esc(x.m.title)}</b><small>${[x.s.screen, x.m.language, runtime(x.m)+' min'].filter(Boolean).map(esc).join(' · ')}</small>${x.s.note?`<small class="snote">${esc(x.s.note)}</small>`:''}</span>${live?'<span class="tag booked">Now</span>':x.s.going||x.s.booked?'<span class="tag plan">Going</span>':''}</button>`;
     }
-  } else {
+  }
+  const evs = EVENTS.filter(e=>e.v===id && (state.showPast || evEnd(e)>n));
+  if(evs.length){ let dd=''; for(const e of evs){ if(e.d!==dd){ dd=e.d; body += `<div class="vday">${fmtDay(evStart(e))}</div>`; } body += evRow(e); } }
+  else if(!shows.length) {
     body = `<div class="vnone">${v.kind==='event' ? 'No film screenings are listed here.' : hasShows() ? 'No upcoming screenings listed here.' : 'Schedule not announced yet. Films and showtimes will appear here as soon as IFFI publishes them.'}</div>`;
   }
   openModal(`<div class="vhead"><span class="vic big k-${v.kind}">${vIcon(v.kind,26)}</span><div><h2>${esc(v.name)}</h2><div class="dmeta">${esc(v.area)} · ${VKIND[v.kind]}</div>${v.travel?`<div class="dmeta">${esc(v.travel)}</div>`:''}${v.approx?`<div class="dmeta" style="font-size:13.5px">Map pin is approximate – use Directions</div>`:''}</div></div>
@@ -236,8 +260,10 @@ function openVenue(id){
     <a class="btn vdir" href="${mapUrl(v.map)}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg>Directions</a>
     ${v.kind!=='event'||shows.length?`<div class="vlist-h">Films showing here</div>`:''}${body}`, venueURL(v)); tick();
 }
-const secGroup = s => !s ? '' : /^Indian Panorama/.test(s) ? 'Indian Panorama' : /^(Opening Film|Mid Fest Film|Closing Film|Special Screenings)$/.test(s) ? 'Galas & specials' : s;
-const secOK = m => !state.section || secGroup(m.section)===state.section;
+const secGroup = s => !s ? '' : /^Indian Panorama/.test(s) ? 'Indian Panorama' : /^(Opening Film|Mid Fest Film|Closing Film|Special Screenings|Special Presentations|Gala Premieres)$/.test(s) ? 'Galas & specials' : /^(Centenary Celebrations|Homage|Golden Jubilee Celebrations)$/.test(s) ? 'Indian classics & tributes' : s;
+// a film can sit in more than one section (e.g. International Competition + Indian Panorama): use its section plus any section-name tags
+const secGroups = m => { const all=new Set(db.movies.map(x=>x.section)); return [...new Set([m.section, ...(m.tags||[]).filter(t=>all.has(t))].map(secGroup).filter(Boolean))]; };
+const secOK = m => !state.section || secGroups(m).includes(state.section);
 const GENRES = [['Drama',/drama/i],['Documentary',/documentary|docu/i],['Comedy',/comed/i],['Thriller',/thriller|mystery|noir/i],['Horror',/horror|gothic/i],['Sci-fi',/sci-fi/i],['Fantasy',/fantasy|supernatural/i],['Animation',/anim/i],['Experimental',/experimental|slow cinema/i],['Crime',/crime/i],['Romance',/roman/i],['Family',/family|children/i],['Action & adventure',/action|adventure|spy|epic/i],['Mythological',/mytholog/i],['Music & dance',/music|dance/i],['War & history',/war |war\/|war$|historical|period/i],['Coming of age',/coming-of-age/i],['Classics',/classic/i]];
 const genreTags = m => GENRES.filter(([,r])=>r.test(m.genre||'')).map(([g])=>g);
 const countries = m => String(m.country||'').split(',').map(x=>x.trim()).filter(Boolean);
@@ -246,7 +272,7 @@ const nowShows = m => { const n=now(); return (m.screenings||[]).filter(s=>{ con
 const fOK = m => secOK(m) && (!state.genre || genreTags(m).includes(state.genre)) && (!state.country || countries(m).includes(state.country)) && (!state.now || nowShows(m).length) && (!state.venue || (m.screenings||[]).some(s=>venueOf(s.venue)?.id===state.venue));
 function countOpts(fn){ const c={}; for(const m of db.movies) for(const v of fn(m)) c[v]=(c[v]||0)+1; return c; }
 function filterBar(extra='', right=''){
-  const sec=countOpts(m=>{ const g=secGroup(m.section); return g?[g]:[]; }), gen=countOpts(genreTags), cty=countOpts(countries);
+  const sec=countOpts(secGroups), gen=countOpts(genreTags), cty=countOpts(countries);
   if(state.section && !sec[state.section]) state.section='';
   const az = c => Object.keys(c).sort((a,b)=>a.localeCompare(b)).map(k=>[k,k,c[k]]);
   filterBar._o = {
@@ -325,20 +351,24 @@ function renderScheduleTime(){
     </div>`;
   }
 
-  if(!items.length){
+  const noFilter = !state.q && !state.tag && !state.onlyMine && !state.now && !state.genre && !state.country && !state.section && !state.venue;
+  const evs = noFilter ? EVENTS.filter(e => (state.showPast || evEnd(e)>n) && (!state.day || e.d===state.day)) : [];
+  if(!items.length && !evs.length){
     return html + (db.movies.length
       ? `<div class="empty"><h3>${allScreenings().length?'No shows match':'Schedule not announced yet'}</h3>${allScreenings().length?'Try another day or section.':'Showtimes will appear here as soon as IFFI publishes them.'}</div>`
       : `<div class="empty"><h3>No films yet</h3>The film list is loading. Refresh the page if it doesn't appear.</div>`);
   }
 
   let day='';
-  for(const x of items){
+  const list = [...items, ...evs.map(e=>({ev:e, start:evStart(e)}))].sort((a,b)=>a.start-b.start);
+  for(const x of list){
     const d = x.start.toDateString();
     if(d!==day){
       day=d;
       const count = items.filter(y=>y.start.toDateString()===d).length;
-      html += `<h2 class="day"><span>${fmtDay(x.start)}${d===n.toDateString()?' · Today':''}</span><span>${count} show${count>1?'s':''}</span></h2>`;
+      html += `<h2 class="day"><span>${fmtDay(x.start)}${d===n.toDateString()?' · Today':''}</span><span>${count?count+' show'+(count>1?'s':''):''}</span></h2>`;
     }
+    if(x.ev){ html += evRow(x.ev, true); continue; }
     const past = x.end < n, live = x.start<=n && x.end>n;
     const tags = [
       x.s.booked ? `<span class="tag booked">Booked</span>` : x.s.going ? `<span class="tag plan">Going</span>` : '',
@@ -352,6 +382,7 @@ function renderScheduleTime(){
       <div class="info">
         <div class="t">${esc(x.m.title)}</div>
         <div class="meta">📍 ${esc(x.s.venue||'Venue TBA')}${x.s.screen?' · '+esc(x.s.screen):''}${x.s.seat?' · Seat '+esc(x.s.seat):''} · ${runtime(x.m)} min${x.m.language?' · '+esc(x.m.language):''}</div>
+        ${x.s.note?`<div class="snote">${esc(x.s.note)}</div>`:''}
         <div style="margin-top:4px">${tags}${x.m.section?`<span class="tag sec">${esc(x.m.section)}</span>`:''}</div>
       </div>
       <div class="acts" onclick="event.stopPropagation()">
@@ -368,7 +399,7 @@ function renderScheduleTime(){
 function cardHtml(m, badge){
   const ns = nextScreening(m);
   const sub = m.status==='watched' ? `<span class="stars">${stars(m.rating)}</span>` : (ns ? `<span>${fmtShort(ns.start)+' '+fmtTime(ns.start)}</span>` : '');
-  const b = badge || (m.status==='watched' ? '<span style="color:var(--green)">✓ Watched</span>' : confirmInfo(m) ? '<span style="color:var(--green)">✓ Screening</span>' : '');
+  const b = badge || (m.status==='watched' ? '<span style="color:var(--green)">✓ Watched</span>' : '');
   return `<div class="card" data-pid="${m.id}" tabindex="0" role="button" aria-label="${esc(m.title)}" onclick="openDetail('${m.id}')">
     ${poster(m).replace(/<\/div>$/, (m.status!=='watched' ? `<button class="bm ${m.status==='want'?'on':''}" aria-label="${m.status==='want'?'Remove from my list':'Save to my list'}" onclick="event.stopPropagation();quickSave('${m.id}')"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4.5L6 21z" stroke-linejoin="round"/></svg></button>` : '') + '</div>')}
     ${b?`<span class="badge-next">${b}</span>`:''}
@@ -574,6 +605,7 @@ function openDetail(id){
     return `<div class="scr" style="${past?'opacity:.55':''}">
       <div><b>${fmtShort(st)}, ${fmtTime(st)}</b> <span style="color:var(--muted)">– ${fmtTime(en)}</span><br>
         <span style="color:var(--muted);font-size:15px">📍 ${s.venue?(venueOf(s.venue)?`<a class="vlink" href="${venueURL(venueOf(s.venue))}" onclick="event.preventDefault();openVenue('${venueOf(s.venue).id}')">${esc(s.venue)}</a>`:`<a class="vlink" href="${mapUrl(s.venue)}" target="_blank" rel="noopener">${esc(s.venue)}</a>`):'Venue TBA'}${s.screen?' · '+esc(s.screen):''}${s.seat?' · Seat '+esc(s.seat):''}</span>
+        ${s.note?`<div class="snote">${esc(s.note)}</div>`:''}
         <span style="font-size:14px;margin-left:6px">${s.source?srcLink(s.source,'Source'):'<span style="color:var(--muted)">· no source</span>'}</span>
         <div>${s.booked?'<span class="tag booked">Booked</span>':s.going?'<span class="tag plan">Going</span>':''}${cl.has(s.id)?'<span class="tag clash">Clash</span>':''}${m.watchedAt===s.id?'<span class="tag booked">Watched here</span>':''}</div>
       </div>
@@ -752,9 +784,12 @@ $('#file').onchange = async e => {
         const ex = db.movies.find(x=>x.title.toLowerCase()===String(m.title).toLowerCase());
         const screenings = (m.screenings||[]).map(s=>({id:uid(),...s}));
         if(ex){
-          ex.screenings = [...(ex.screenings||[]), ...screenings.filter(s=>!ex.screenings.some(o=>o.date===s.date&&o.time===s.time&&o.venue===s.venue))];
+          if(screenings.some(s=>s.off)){   // official schedule: replace earlier official showtimes, keep your own picks
+            const prev=Object.fromEntries((ex.screenings||[]).filter(s=>s.off).map(s=>[s.id,s]));
+            ex.screenings = [...(ex.screenings||[]).filter(s=>!s.off), ...screenings.map(s=>({...s, going:!!prev[s.id]?.going, booked:!!prev[s.id]?.booked, seat:prev[s.id]?.seat||''}))];
+          } else ex.screenings = [...(ex.screenings||[]), ...screenings.filter(s=>!ex.screenings.some(o=>o.date===s.date&&o.time===s.time&&o.venue===s.venue))];
           for(const k of ['notes','originalTitle','genre','genreUnverified','recRank','director','country','language','year','runtime','section','synopsis','poster','link','cast','festivals','premiere','pc']) if(k in m) ex[k]=m[k];   // official list is the source of truth
-          ex.tags = [...new Set([...(ex.tags||[]), ...(m.tags||[])])];
+          ex.tags = m.tags ? [...m.tags] : (ex.tags||[]);   // official list decides the tags
           ex.sources = [...(ex.sources||[]), ...(m.sources||[]).filter(x=>!(ex.sources||[]).some(o=>o.url===x.url))];
           if(m.confirmed?.on && !ex.confirmed?.on) ex.confirmed = m.confirmed;
           updated++;
