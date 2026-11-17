@@ -85,19 +85,21 @@ function routeOf(href){
   if((r=p.match(/^film\/([^/]+)\/?$/))) return {film:decodeURIComponent(r[1])};
   if((r=p.match(/^venue\/([^/]+)\/?$/))) return {venue:decodeURIComponent(r[1])};
   if(/^privacy\/?$/.test(p)) return {privacy:true};
+  if(/^list\/?$/.test(p)){ const q=(href.split('?')[1]||'').split('#')[0]; return {list:new URLSearchParams(q).get('f')||''}; }
   if(/^schedule\/?$/.test(p)) return {view:'schedule'};
   if(/^my-list\/?$/.test(p)) return {view:'mine'};
   return {view:'all', unknown:p!==''};
 }
 function syncTitle(){
   const r=routeOf(), m=r.film&&db.movies.find(x=>slug(x.title)===r.film), v=r.venue&&venueById(r.venue);
-  const t = m ? m.title : v ? v.name : r.privacy ? 'Privacy & your data' : VIEW_NAME[r.view||state.view];
+  const t = m ? m.title : v ? v.name : r.privacy ? 'Privacy & your data' : r.list!==undefined ? 'Shared watchlist' : VIEW_NAME[r.view||state.view];
   document.title = t ? t+' · '+SITE : SITE;
 }
 function openRoute(r){
   if(r.film){ const m=db.movies.find(x=>slug(x.title)===r.film); if(m){ openDetail(m.id); return true; } }
   if(r.venue && venueById(r.venue)){ openVenue(r.venue); return true; }
   if(r.privacy){ openPrivacy(); return true; }
+  if(r.list!==undefined){ openSharedList(r.list); return true; }
   return false;
 }
 // Startup: work out the page from the URL (also handles old #film= links and GitHub's 404 redirect)
@@ -106,7 +108,7 @@ function initRoute(){
   const hf=(location.hash.match(/film=([^&]+)/)||[])[1], hv=(location.hash.match(/venue=([^&]+)/)||[])[1];
   if(hf) history.replaceState(null,'',ROOT+'film/'+hf+'/'); else if(hv) history.replaceState(null,'',ROOT+'venue/'+hv+'/');
   const r=routeOf();
-  if(r.film||r.venue||r.privacy){ initRoute.pending=r; history.replaceState({view:'all'},'',ROOT); state.view='all'; }
+  if(r.film||r.venue||r.privacy||r.list!==undefined){ initRoute.pending=r; history.replaceState({view:'all'},'',ROOT); state.view='all'; }
   else { state.view=r.view; history.replaceState({view:r.view},'',ROOT+VIEW_PATH[r.view]+(r.unknown?'':location.search)); }
 }
 initRoute();
@@ -436,7 +438,7 @@ function renderPlan(){
           ${live?'<span class="tag booked">Now showing</span>':''}</div>
         <div class="acts" onclick="event.stopPropagation()">${past
           ? `<button class="btn sm" onclick="quickWatched('${x.m.id}','${x.s.id}')">✓ Watched</button>`
-          : `<button class="btn sm" onclick="toggleS('${x.m.id}','${x.s.id}','going');toast('Removed from My plan')">Remove</button>`}</div>
+          : `<button class="icbtn" aria-label="Remove ${esc(x.m.title)} from My plan" title="Remove from My plan" onclick="toggleS('${x.m.id}','${x.s.id}','going');toast('Removed from My plan')">${IC.x}</button>`}</div>
       </div>`;
     }
   }
@@ -483,34 +485,60 @@ function renderGrid(kind){
   }
   return html + `<div class="grid">${list.map(m=>cardHtml(m)).join('')}</div>`;
 }
-/* ---------- share the To-watch list as a message ---------- */
-function watchlistText(){
-  const n = now();
-  const list = db.movies.filter(m=>m.status==='want').sort(hasShows()?byNext:byTitle);
-  const lines = list.map((m,i)=>{
-    const ups = allScreenings().filter(x=>x.m===m && x.end>n);
-    const pick = ups.find(x=>x.s.going) || ups[0];
-    const when = pick ? `${fmtShort(pick.start)}, ${fmtTime(pick.start)} · ${venueOf(pick.s.venue)?.name||pick.s.venue||''}${pick.s.going?' (I’m going)':''}` : 'showtime to be announced';
-    return `${i+1}. ${m.title}${m.director?' – '+m.director:''}\n   ${when}\n   ${filmURL(m)}`;
-  });
-  return `My IFFI Goa 2026 watchlist 🎬\n\n${lines.join('\n\n')}\n\nPlan yours: ${ROOT}`;
-}
+const IC = {
+  share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>',
+  link:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>',
+  copy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  open:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
+  wa:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>',
+  bookmark:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4.5L6 21z"/></svg>',
+  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+};
+/* ---------- shared watchlist: a public page at list/?f=slug.slug… ---------- */
+const listURL = films => ROOT + 'list/?f=' + films.map(m=>slug(m.title)).join('.');
+function myWatchlist(){ return db.movies.filter(m=>m.status==='want').sort(hasShows()?byNext:byTitle); }
 async function shareWatchlist(){
-  const text = watchlistText(), title = 'My IFFI Goa 2026 watchlist';
-  if(navigator.share){ try{ await navigator.share({title, text}); }catch(e){} return; }
-  openModal(`<div class="ask"><h2>Share your list</h2><p>Send it on WhatsApp, or copy it to paste anywhere.</p>
-    <button class="btn primary" onclick="window.open('https://wa.me/?text='+encodeURIComponent(watchlistText()),'_blank','noopener');closeModal()">Send on WhatsApp</button>
-    <button class="btn" onclick="copyWatchlist()">Copy list</button></div>`);
+  const films = myWatchlist(); if(!films.length) return;
+  const url = listURL(films), title = 'My IFFI Goa 2026 watchlist', text = `My IFFI Goa 2026 watchlist – ${films.length} film${films.length>1?'s':''} 🎬`;
+  if(navigator.share && matchMedia('(pointer: coarse)').matches){ try{ await navigator.share({title, text, url}); }catch(e){} return; }
+  const wa = 'https://wa.me/?text='+encodeURIComponent(text+'\n'+url);
+  openModal(`<div class="sharedlg"><h2>Share your list</h2><p>Anyone with this link can see your ${films.length} film${films.length>1?'s':''}. Share again after you change your list.</p>
+    <div class="shr-link"><input readonly value="${esc(url)}" onclick="this.select()" aria-label="Link to your list"><button class="icbtn" onclick="copyText('${esc(url)}')" aria-label="Copy link" title="Copy link">${IC.copy}</button></div>
+    <div class="shr-opts">
+      <button onclick="copyText('${esc(url)}')"><span class="ico">${IC.link}</span>Copy link</button>
+      <a href="${esc(wa)}" target="_blank" rel="noopener"><span class="ico wa">${IC.wa}</span>WhatsApp</a>
+      <a href="${esc(url)}" target="_blank" rel="noopener"><span class="ico">${IC.open}</span>Open</a>
+    </div></div>`);
 }
-async function copyWatchlist(){
-  try{ await navigator.clipboard.writeText(watchlistText()); toast('List copied'); closeModal(); }
-  catch(e){ toast('Could not copy – try WhatsApp instead'); }
+async function copyText(t){ try{ await navigator.clipboard.writeText(t); toast('Link copied'); }catch(e){ toast('Could not copy – select the link and copy it'); } }
+function sharedFilms(code){
+  const seen=new Set(); return String(code||'').split('.').map(sl=>db.movies.find(m=>slug(m.title)===sl)).filter(m=>m && !seen.has(m.id) && seen.add(m.id));
+}
+function openSharedList(code){
+  const films = sharedFilms(code), n = now();
+  if(!films.length){ openModal(`<div class="ask"><h2>This list is empty</h2><p>The link may be incomplete. Ask for it to be shared again.</p><button class="btn primary" onclick="closeModal()">Browse all films</button></div>`, ROOT+'list/?f='+encodeURIComponent(code||'')); return; }
+  const rows = films.map(m=>{
+    const ups = allScreenings().filter(x=>x.m===m && x.end>n), nx = ups[0];
+    const when = nx ? `Next: ${dayWord(nx.start)}, ${fmtTime(nx.start)} · ${esc(venueOf(nx.s.venue)?.name||nx.s.venue||'')}${ups.length>1?` <span class="more">+${ups.length-1} more</span>`:''}` : (m.screenings||[]).some(s=>s.date) ? 'No more showtimes' : 'Showtime to be announced';
+    const meta = [m.director, m.runtime||m.screenings?.length ? runtime(m)+' min' : '', m.language].filter(Boolean).map(esc).join(' · ');
+    return `<button class="srow" onclick="openDetail('${m.id}')"><div class="mini">${poster(m,true)}</div><div class="info"><div class="t">${esc(m.title)}${m.status==='want'?' <span class="tag saved">Saved</span>':''}</div><div class="meta">${meta}</div><div class="when">${when}</div></div></button>`;
+  }).join('');
+  const all = films.every(m=>m.status==='want'||m.status==='watched');
+  openModal(`<div class="slist"><h2>IFFI Goa 2026 watchlist</h2><p class="upd">${films.length} film${films.length>1?'s':''} · shared from Festival Diaries · Goa</p>
+    <div class="srows">${rows}</div>
+    <div class="pact">${all ? '<span class="done">✓ All in your list</span>' : `<button class="pillbtn on" onclick="saveSharedList('${esc(code)}')">${IC.bookmark}Save all</button>`}<button class="linkbtn more" onclick="closeModal()">Browse all films →</button></div></div>`, ROOT+'list/?f='+encodeURIComponent(code).replace(/%2E/gi,'.'));
+}
+function saveSharedList(code){
+  const films = sharedFilms(code);
+  if(!cloud.user){ cloud.pendingList = code; return askSignIn(); }
+  let k=0; for(const m of films) if(m.status!=='want' && m.status!=='watched'){ m.status='want'; k++; }
+  save(); render(); openSharedList(code); toast(k ? `Saved ${k} film${k>1?'s':''} to My list` : 'Already in your list');
 }
 function renderMine(){
   if(!cloud.user) return `<div class="empty ask" style="max-width:420px;margin:30px auto"><h2>Your list lives here</h2><p>Sign in with Google to save films and keep track of what you’ve watched – on any device.</p><button class="btn primary" onclick="cloudToggle()">Continue with Google</button>${CONSENT_NOTE}</div>`;
   const nw = db.movies.filter(m=>m.status==='want').length, nd = db.movies.filter(m=>m.status==='watched').length;
   const t = state.mineTab==='watched' ? 'watched' : 'want';
-  return `<div class="mseg" role="tablist"><button role="tab" aria-selected="${t==='want'}" class="${t==='want'?'on':''}" onclick="state.mineTab='want';persistUI();render()">To watch<small>${nw}</small></button><button role="tab" aria-selected="${t==='watched'}" class="${t==='watched'?'on':''}" onclick="state.mineTab='watched';persistUI();render()">Watched<small>${nd}</small></button></div>` + (t==='want' && nw ? `<div class="sharebar"><span>${nw} film${nw>1?'s':''} you want to see</span><button class="btn primary" onclick="shareWatchlist()"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>Share my list</button></div>` : '') + renderGrid(t);
+  return `<div class="mseg" role="tablist"><button role="tab" aria-selected="${t==='want'}" class="${t==='want'?'on':''}" onclick="state.mineTab='want';persistUI();render()">To watch<small>${nw}</small></button><button role="tab" aria-selected="${t==='watched'}" class="${t==='watched'?'on':''}" onclick="state.mineTab='watched';persistUI();render()">Watched<small>${nd}</small></button></div>` + (t==='want' && nw ? `<div class="sharebar"><span>${nw} film${nw>1?'s':''} you want to see</span><button class="pillbtn" onclick="shareWatchlist()">${IC.share}Share</button></div>` : '') + renderGrid(t);
 }
 
 const statusLabel = m => m.status==='watched' ? 'Watched' : m.status==='want' ? 'Watchlist' : '';
@@ -641,7 +669,7 @@ function closeModal(fromBack){ if(!$('#scrim').classList.contains('open')) retur
 window.addEventListener('popstate', ()=>{ if($('#sheet').classList.contains('open')) closeSheet(true); else if($('#scrim').classList.contains('open')) closeModal(true); });
 window.addEventListener('popstate', ()=>{   // keep the page in step with the URL (back / forward)
   const r=routeOf();
-  if(r.film||r.venue||r.privacy){ if(!$('#scrim').classList.contains('open')) openRoute(r); }
+  if(r.film||r.venue||r.privacy||r.list!==undefined){ if(!$('#scrim').classList.contains('open')) openRoute(r); }
   else if(state.view!==r.view) setView(r.view, true);
   syncTitle();
 });
@@ -1064,6 +1092,7 @@ async function onUser(u){
     const pm = pd && db.movies.find(m=>m.title.toLowerCase()===pd.t);
     if(pm){ pm.status = pd.st; if(pd.st==='watched' && !pm.watchedOn) pm.watchedOn = localISO(); const ps = pd.sk && pm.screenings.find(y=>skey(y)===pd.sk); if(ps) ps.going=true; save(); render(); if(ps){ if($('#scrim').classList.contains('open')) closeModal(); toast('Signed in – added to My plan'); } else { openDetail(pm.id); toast(pd.st==='want'?'Signed in – saved to My list':'Signed in – marked as watched'); } }
     else if(cloud.agreed){ if($('#scrim').classList.contains('open') && $('#modal .ask')) closeModal(); toast('Signed in – your list is saved online'); }
+    if(cloud.pendingList){ const c=cloud.pendingList; cloud.pendingList=null; saveSharedList(c); }
     if(!cloud.consent) askConsent();   // signed in before the privacy notice existed
   }catch(e){ console.warn(e); toast('Could not reach online storage'); }
 }
