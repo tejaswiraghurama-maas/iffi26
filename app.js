@@ -3,12 +3,45 @@ const KEY = 'iffi-diary-v1';
 const DEFAULT_VENUES = ['INOX Panaji (Old GMC)','INOX Porvorim','Maquinez Palace','Kala Academy','Ashok Samrat','Magic Movies Ponda','Ravindra Bhavan Margao','Other'];
 const DEFAULT_SECTIONS = ['International Competition','Best Debut Feature','ICFT UNESCO Gandhi Medal','Indian Panorama – Feature','Indian Panorama – Non-Feature','Indian Panorama','Cinema of the World','Festival Kaleidoscope','Mission Life','Country Focus','Restored Classics','Retrospective','Homage','Gala Premiere','Opening Film','Closing Film','Other'];
 
-let db = load();
-function load(){
-  try{ const d = JSON.parse(localStorage.getItem(KEY)); if(d && d.movies) return {venues:DEFAULT_VENUES, sections:DEFAULT_SECTIONS, ...d}; }catch(e){}
-  return {movies:[], venues:[...DEFAULT_VENUES], sections:[...DEFAULT_SECTIONS]};
+/* Storage: the film list always comes from data.js; the phone keeps only your own marks (a few KB). */
+const _tk = t => String(t||'').trim().toLowerCase();
+const _sk = s => [s.date,s.time,s.venue].join('|');
+const _slug = t => String(t||'').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+function officialVer(){ const t=window.__OFFICIAL||document.getElementById('official')?.textContent||''; return '5:'+t.length+':'+((t.match(/"fetched":"([^"]*)"/)||[])[1]||''); }
+function officialList(){ try{ return JSON.parse(window.__OFFICIAL||document.getElementById('official')?.textContent||'{}').movies||[]; }catch(e){ return []; } }
+let _offSet = null;
+const MARK_KEYS = ['status','priority','rating','liked','review','watchedOn'];
+function fromCompact(d){
+  const marks=d.marks||{}, ratings=d.ratings||{};
+  const movies = officialList().map(o=>{
+    const m = {rating:0, ...o, status:o.status||'none', id:'f-'+_slug(o.title), screenings:(o.screenings||[]).map(x=>({...x}))};
+    const e = marks[_tk(m.title)];
+    if(e){ for(const k of MARK_KEYS) if(e.f && e.f[k]!==undefined) m[k]=e.f[k];
+      for(const x of m.screenings){ const r=e.s?.[_sk(x)]; if(r && (r.going||r.booked)) x.going=true; }
+      if(e.wa) m.watchedAt = m.screenings.find(x=>_sk(x)===e.wa)?.id; }
+    if(ratings[_tk(m.title)]) m.ratings = ratings[_tk(m.title)];
+    return m;
+  });
+  return {movies: movies.concat(d.custom||[]), venues:d.venues||[...DEFAULT_VENUES], sections:d.sections||[...DEFAULT_SECTIONS], omdbKey:d.omdbKey, officialVer:officialVer()};
 }
-function save(){ try{ localStorage.setItem(KEY, JSON.stringify(db)); }catch(e){ toast('Could not save – storage blocked'); } }
+function load(){
+  let d=null; try{ d = JSON.parse(localStorage.getItem(KEY)); }catch(e){}
+  if(d && d.v===2) return fromCompact(d);
+  if(d && d.movies && d.movies.length) return {venues:DEFAULT_VENUES, sections:DEFAULT_SECTIONS, ...d};   // older full copy: tidied on next save
+  return fromCompact({});
+}
+function save(){
+  try{
+    const off = _offSet ||= new Set(officialList().map(o=>_tk(o.title))), marks={}, ratings={}, custom=[];
+    for(const m of db.movies){
+      if(!off.has(_tk(m.title))){ custom.push(m); continue; }
+      const e = localMark(m); if(e) marks[_tk(m.title)] = e;
+      if(m.ratings) ratings[_tk(m.title)] = m.ratings;
+    }
+    localStorage.setItem(KEY, JSON.stringify({v:2, marks, ratings, custom, venues:db.venues, sections:db.sections, omdbKey:db.omdbKey, officialVer:db.officialVer}));
+  }catch(e){ toast('Could not save – storage blocked'); }
+}
+let db = load();
 const uid = () => Math.random().toString(36).slice(2,10);
 
 /* ---------- helpers ---------- */
@@ -23,8 +56,8 @@ const endOf = (m,s) => new Date(dt(s).getTime() + (+s.dur || runtime(m))*60000);
 const stars = r => r ? '★'.repeat(Math.floor(r)) + (r%1 ? '½' : '') : '';
 function toast(t){ const el=$('#toast'); el.textContent=t; el.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('show'),2200); }
 function hue(str){ let h=0; for(const c of str) h=(h*31+c.charCodeAt(0))%360; return h; }
-function poster(m, mini){
-  if(m.poster) return `<div class="poster"><img src="${esc(m.poster)}"${m.pc?` style="inset:auto;left:${m.pc[2]}%;top:${m.pc[3]}%;width:${m.pc[0]}%;height:${m.pc[1]}%;object-fit:fill"`:''} alt="" loading="lazy" decoding="async" onerror="this.remove()">${mini?'':placeholder(m,true)}</div>`;
+function poster(m, mini, large){
+  if(m.poster) return `<div class="poster"><img src="${esc(large&&m.posterL||m.poster)}"${m.pc?` style="inset:auto;left:${m.pc[2]}%;top:${m.pc[3]}%;width:${m.pc[0]}%;height:${m.pc[1]}%;object-fit:fill"`:''} alt="" loading="lazy" decoding="async" onerror="this.remove()">${mini?'':placeholder(m,true)}</div>`;
   return `<div class="poster">${placeholder(m, false, mini)}</div>`;
 }
 function placeholder(m, behind, mini){
@@ -63,6 +96,13 @@ function matches(m){
 }
 
 /* ---------- state + routing ---------- */
+let DETAIL=null, detailP=null;
+function ensureDetails(){
+  if(DETAIL || !window.__DETAIL_URL) return Promise.resolve();
+  return detailP ||= new Promise(res=>{ const sc=document.createElement('script'); sc.src=window.__DETAIL_URL; sc.async=true;
+    sc.onload=()=>{ DETAIL=window.__DETAIL||{}; applyDetails(); res(); }; sc.onerror=()=>{ detailP=null; res(); }; document.head.appendChild(sc); });
+}
+function applyDetails(){ if(!DETAIL) return; for(const m of db.movies){ const d=DETAIL[_tk(m.title)]; if(d) for(const k in d) if(m[k]===undefined||m[k]===''||m[k]===null) m[k]=d[k]; } }
 function officialText(){ return window.__OFFICIAL || document.getElementById('official')?.textContent || ''; }
 const state = { view: 'all', q:'', showPast:false, onlyMine:false, venue:'', section:'', tag:'', mineTab:'want' };
 try{ Object.assign(state, JSON.parse(localStorage.getItem(KEY+'-ui')||'{}'), {q:'', view:'all'}); }catch(e){}
@@ -459,7 +499,7 @@ function cardHtml(m, badge){
   const sub = m.status==='watched' ? `<span class="stars">${stars(m.rating)}</span>` : (ns ? `<span>${fmtShort(ns.start)+' '+fmtTime(ns.start)}</span>` : '');
   const b = badge || (m.status==='watched' ? '<span style="color:var(--green)">✓ Watched</span>' : '');
   return `<div class="card" data-pid="${m.id}" tabindex="0" role="button" aria-label="${esc(m.title)}" onclick="openDetail('${m.id}')">
-    ${poster(m).replace(/<\/div>$/, (m.status!=='watched' ? `<button class="bm ${m.status==='want'?'on':''}" aria-label="${m.status==='want'?'Remove from my watchlist':'Save to my watchlist'}" onclick="event.stopPropagation();quickSave('${m.id}')"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4.5L6 21z" stroke-linejoin="round"/></svg></button>` : '') + '</div>')}
+    ${poster(m).replace(/<\/div>$/, (m.status!=='watched' ? `<button class="bm ${m.status==='want'?'on':''}" data-mid="${m.id}" aria-label="${m.status==='want'?'Remove from my watchlist':'Save to my watchlist'}" onclick="event.stopPropagation();quickSave('${m.id}')"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4.5L6 21z" stroke-linejoin="round"/></svg></button>` : '') + '</div>')}
     ${b?`<span class="badge-next">${b}</span>`:''}
     <div class="cap">${esc(m.title)}</div>
     <div class="sub">${sub}</div>
@@ -541,7 +581,7 @@ function saveSharedList(code, by){
   save(); render(); openSharedList(code, by); toast(k ? `Saved ${k} film${k>1?'s':''} to My Watchlist` : 'Already in your watchlist');
 }
 function renderMine(){
-  if(!cloud.user) return `<div class="empty ask" style="max-width:420px;margin:30px auto"><h2>Your watchlist lives here</h2><p>Sign in with Google to save films and keep track of what you’ve watched – on any device.</p><button class="btn primary" onclick="cloudToggle()">Continue with Google</button>${CONSENT_NOTE}</div>`;
+  if(!cloud.user){ cloudInit(); } if(!cloud.user) return `<div class="empty ask" style="max-width:420px;margin:30px auto"><h2>Your watchlist lives here</h2><p>Sign in with Google to save films and keep track of what you’ve watched – on any device.</p><button class="btn primary" onclick="cloudToggle()">Continue with Google</button>${CONSENT_NOTE}</div>`;
   const nw = db.movies.filter(m=>m.status==='want').length, nd = db.movies.filter(m=>m.status==='watched').length;
   const t = state.mineTab==='watched' ? 'watched' : 'want';
   return `<div class="mseg" role="tablist"><button role="tab" aria-selected="${t==='want'}" class="${t==='want'?'on':''}" onclick="state.mineTab='want';persistUI();render()">To watch<small>${nw}</small></button><button role="tab" aria-selected="${t==='watched'}" class="${t==='watched'?'on':''}" onclick="state.mineTab='watched';persistUI();render()">Watched<small>${nd}</small></button></div>` + (t==='want' && nw ? `<div class="sharebar"><span>${nw} film${nw>1?'s':''} you want to see</span><button class="pillbtn" onclick="shareWatchlist()">${IC.share}Share</button></div>` : '') + renderGrid(t);
@@ -636,8 +676,12 @@ function setStatus(mid,st){
 }
 function setRating(mid,r){ if(!cloud.user) return askSignIn(mid,'watched'); const m=find(mid); m.rating = m.rating===r ? 0 : r; if(m.status!=='watched'){ m.status='watched'; m.watchedOn=m.watchedOn||localISO();} save(); render(); openDetail(mid); }
 function toggleLike(mid){ const m=find(mid); m.liked=!m.liked; save(); render(); openDetail(mid); }
-function quickSave(mid){ if(!cloud.user) return askSignIn(mid,'want'); const m=find(mid); if(!m) return; m.status = m.status==='want' ? 'none' : 'want'; save(); render(); toast(m.status==='want'?'Saved to My Watchlist':'Removed from My Watchlist'); }
+function quickSave(mid){ if(!cloud.user) return askSignIn(mid,'want'); const m=find(mid); if(!m) return; m.status = m.status==='want' ? 'none' : 'want'; save();
+  if(state.view==='all'){ const on=m.status==='want'; document.querySelectorAll(`.bm[data-mid="${mid}"]`).forEach(b=>{ b.classList.toggle('on',on); b.setAttribute('aria-label', on?'Remove from my watchlist':'Save to my watchlist'); }); $('#n-mine').textContent = db.movies.filter(x=>x.status==='want').length; }
+  else render();
+  toast(m.status==='want'?'Saved to My Watchlist':'Removed from My Watchlist'); }
 function askSignIn(mid,st,sid){
+  cloudInit();
   const m=find(mid), back=$('#scrim').classList.contains('open'); const sc=sid&&m?.screenings.find(y=>y.id===sid); cloud.pending = m ? {t:m.title.toLowerCase(), st, sk:sc?skey(sc):''} : null;
   openModal(`<div class="ask"><h2>${st==='watched'?'Keep track of what you watch':m?'Save films to your watchlist':'Sign in to save your watchlist'}</h2><p>Sign in with Google so your watchlist is saved to your account and works on all your devices.</p><button class="btn primary" onclick="cloudToggle()">Continue with Google</button><button class="btn" onclick="${m&&back?`openDetail('${m.id}')`:'closeModal()'}">Not now</button>${CONSENT_NOTE}</div>`);
 }
@@ -682,6 +726,7 @@ window.addEventListener('popstate', ()=>{   // keep the page in step with the UR
 
 function openDetail(id){
   const m = find(id); if(!m) return;
+  if(!DETAIL && window.__DETAIL_URL) ensureDetails().then(()=>{ if($('#scrim').classList.contains('open') && location.href===filmURL(m)) openDetail(id); });
   const n = now(), cl = clashes();
   const scr = [...(m.screenings||[])].sort((a,b)=>dt(a)-dt(b));
   const r = m.rating||0;
@@ -695,7 +740,7 @@ function openDetail(id){
   const going = scr.find(s=>(s.going||s.booked) && endOf(m,s)>n);
   const I = d => `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   openModal(`<button class="shr" aria-label="Share this film" title="Share" onclick="shareFilm('${m.id}')">${I('<path d="M12 15V3.5M7.5 8L12 3.5 16.5 8"/><path d="M5 12.5v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>')}</button><div class="dhead">
-    <a class="dposter" href="${ytUrl(m)}" target="_blank" rel="noopener" aria-label="Watch the trailer of ${esc(m.title)} on YouTube">${poster(m)}<span class="play"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z" fill="currentColor"/></svg>Trailer</span></a>
+    <a class="dposter" href="${ytUrl(m)}" target="_blank" rel="noopener" aria-label="Watch the trailer of ${esc(m.title)} on YouTube">${poster(m,false,true)}<span class="play"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z" fill="currentColor"/></svg>Trailer</span></a>
     <div class="dinfo">
       <h2>${esc(m.title)}</h2>
       ${meta?`<div class="dmeta">${meta}</div>`:''}
@@ -1102,6 +1147,7 @@ save = function(){ _localSave(); if(cloud.user && cloud.ready) pushSoon(); };
 document.addEventListener('visibilitychange', ()=>{ if(document.hidden && cloud.t) pushNow(); });
 async function onUser(u){
   cloud.user=u; cloud.ready=false; if(cloud.unsub){ cloud.unsub(); cloud.unsub=null; }
+  try{ if(u) localStorage.setItem('fd-in','1'); else localStorage.removeItem('fd-in'); }catch(e){}
   if(!u && cloud.deleting){   // account just deleted: forget everything on this device too
     cloud.deleting=false; cloud.consent=null; clearLocalMarks(); try{ localStorage.removeItem(KEY+'-parked'); }catch(e){}
     updateCloudMenu(); return;
@@ -1145,16 +1191,28 @@ function updateCloudMenu(){
     av.innerHTML = u.photoURL ? `<img src="${esc(u.photoURL)}" alt="" referrerpolicy="no-referrer">` : esc((nm[0]||'?').toUpperCase());
     av.title = nm; $('#cloudState').innerHTML = `<span class="acct-av">${av.innerHTML}</span><span class="acct-id"><b>${esc(u.displayName||'Signed in')}</b><span>${esc(u.email||'')}</span></span>`; }
 }
-async function cloudInit(){
-  try{
-    const [app,auth,fs] = await Promise.all(['firebase-app.js','firebase-auth.js','firebase-firestore.js'].map(f=>import(FBV+f)));
+let cloudP=null, storeP=null;
+function cloudInit(){
+  return cloudP ||= (async()=>{ try{
+    const [app,auth] = await Promise.all(['firebase-app.js','firebase-auth.js'].map(f=>import(FBV+f)));
     const a = app.initializeApp(FB_CFG);
-    cloud.fb = {...auth, ...fs, auth:auth.getAuth(a), store:(()=>{ try{ return fs.initializeFirestore(a,{localCache:fs.persistentLocalCache({tabManager:fs.persistentMultipleTabManager()})}); }catch(e){ return fs.getFirestore(a); } })()};
-    auth.onAuthStateChanged(cloud.fb.auth, onUser);
-  }catch(e){ console.warn('Online sync unavailable', e); }
+    cloud.fb = {...auth, app:a, auth:auth.getAuth(a)};
+    auth.onAuthStateChanged(cloud.fb.auth, async u=>{ if(u){ try{ await loadStore(); }catch(e){ console.warn(e); } } onUser(u); });
+  }catch(e){ console.warn('Online sync unavailable', e); cloudP=null; } })();
+}
+function loadStore(){   // the sync database code (the biggest part) – only for signed-in people
+  return storeP ||= (async()=>{ const fs = await import(FBV+'firebase-firestore.js'), a = cloud.fb.app;
+    const store = (()=>{ try{ return fs.initializeFirestore(a,{localCache:fs.persistentLocalCache({tabManager:fs.persistentMultipleTabManager()})}); }catch(e){ return fs.getFirestore(a); } })();
+    Object.assign(cloud.fb, fs, {store}); })().catch(e=>{ storeP=null; throw e; });
+}
+async function cloudStart(){   // signed in before? connect now. Otherwise wait until someone wants to sign in.
+  let was = false; try{ was = localStorage.getItem('fd-in')==='1'; }catch(e){}
+  if(!was){ try{ was = !!(await indexedDB.databases?.())?.some(d=>d.name==='firebaseLocalStorageDb'); }catch(e){} }
+  if(was){ cloudInit().then(()=>cloud.fb && loadStore().catch(()=>{})); }
+  else if(!indexedDB.databases) setTimeout(cloudInit, 3000);
 }
 async function cloudToggle(){
-  if(!cloud.fb){ toast('Online sync not available right now'); return; }
+  if(!cloud.fb){ await cloudInit(); if(!cloud.fb){ toast('Online sync not available right now'); return; } }
   const {auth, GoogleAuthProvider, signInWithPopup, signOut} = cloud.fb;
   if(cloud.user){ if(confirm('Sign out? Your lists stay saved in your account.')){ await pushNow(); await signOut(auth); clearLocalMarks(); render(); toast('Signed out'); } return; }
   const p = new GoogleAuthProvider();
@@ -1164,7 +1222,7 @@ async function cloudToggle(){
     if(/popup-blocked|operation-not-supported|web-storage/.test(c)) alert('Sign-in window was blocked.\n\nOpen this site directly in Safari or Chrome (not inside WhatsApp or another app), allow pop-ups, and try again.');
     else if(!/popup-closed|cancelled-popup/.test(c)) toast('Sign-in failed: '+(c||e.message)); }
 }
-cloudInit();
+cloudStart();
 /* ---------- quick look: hover (desktop) / press-and-hold (phone) ---------- */
 function peekHtml(m){
   const c = String(m.country||'').split(',')[0].trim();
@@ -1217,6 +1275,7 @@ function closeSheet(fromBack){
 if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost')) navigator.serviceWorker.register('sw.js').catch(()=>{});
 
 render();
-{ const t=officialText()||''; const ver='4:'+t.length+':'+((t.match(/"fetched":"([^"]*)"/)||[])[1]||'');
-  if(t && db.officialVer!==ver){ db.officialVer=ver; window._quiet=true; loadOfficial(); } }   // pick up film-list updates automatically
+{ const ver=officialVer();
+  if(officialText() && db.officialVer!==ver){ db.officialVer=ver; window._quiet=true; loadOfficial(); } }   // pick up film-list updates automatically
 openFromHash();
+setTimeout(()=>{ (window.requestIdleCallback||setTimeout)(()=>ensureDetails()); }, 1500);
