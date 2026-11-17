@@ -269,6 +269,10 @@ body:not(.guest) .dsign{display:none!important}
 .filters{flex-wrap:wrap!important;align-items:center;row-gap:10px}
 .fright{display:flex;gap:8px;align-items:center;margin-left:auto}
 .fright .seg{margin-left:0}
+/* Discover: the Now / Filters row stays under the top bar while scrolling */
+.filters{position:sticky;top:var(--hdr,64px);z-index:6;background:var(--bg);padding:10px 0;margin-top:-10px;box-shadow:0 0 0 100vmax var(--bg);clip-path:inset(0 -100vmax -1px)}
+.filters::after{content:'';position:absolute;left:-100vmax;right:-100vmax;bottom:0;height:1px;background:var(--line);opacity:0;transition:opacity .15s}
+body.fstuck .filters::after{opacity:1}
 .frow{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;flex:1 1 auto;min-width:0;padding:2px 0}
 @media (max-width:640px){.frow{flex-basis:100%}.fright{margin-left:0;width:100%;justify-content:space-between}}
 .frow::-webkit-scrollbar{display:none}

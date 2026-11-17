@@ -649,6 +649,7 @@ function tick(){ document.querySelectorAll('[data-cd]').forEach(el=>{
 setInterval(tick, 1000);
 const setHdr = () => document.documentElement.style.setProperty('--hdr', (document.querySelector('header')?.offsetHeight||64)+'px');
 addEventListener('resize', setHdr); setHdr();
+addEventListener('scroll', ()=>{ const f=document.querySelector('.filters'); document.body.classList.toggle('fstuck', !!f && scrollY>0 && f.getBoundingClientRect().top<=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hdr'))+1); }, {passive:true});
 
 /* ---------- actions ---------- */
 const find = id => db.movies.find(m=>m.id===id);
