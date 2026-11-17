@@ -119,7 +119,7 @@ $('#tabs').onclick = e => { const b=e.target.closest('a'); if(!b || e.metaKey||e
 $('#q').oninput = e => { state.q = e.target.value; render(); };
 $('#menuBtn').onclick = e => { e.stopPropagation(); const o=$('#menu').classList.toggle('open'); $('#menuBtn').setAttribute('aria-expanded', o); };
 document.addEventListener('click', ()=>$('#menu').classList.remove('open'));
-$('#menu .dd').onclick = e => { const a=e.target.dataset.a; if(a) menuAction(a); };
+$('#menu .dd').onclick = e => { const a=e.target.closest('[data-a]')?.dataset.a; if(a) menuAction(a); };
 $('#scrim').onclick = e => { if(e.target.id==='scrim') closeModal(); };
 document.addEventListener('keydown', e => {
   if(e.key==='Escape'){ if($('#sheet').classList.contains('open')) closeSheet(); else closeModal(); $('#menu').classList.remove('open'); }
@@ -491,6 +491,8 @@ const IC = {
   copy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
   open:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
   wa:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>',
+  download:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>',
+  trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
   bookmark:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4.5L6 21z"/></svg>',
   x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
 };
@@ -879,7 +881,9 @@ function menuAction(a){
   if(a==='key') setKey();
   if(a==='cloud') cloudToggle();
   if(a==='privacy') openPrivacy();
-  if(a==='delacct') deleteAccount();
+  if(a==='account') openAccount();
+  if(a==='mine') setView('mine');
+  if(a==='plan'){ state.smode='plan'; setView('schedule'); }
 }
 $('#file').onchange = async e => {
   const f=e.target.files[0]; if(!f) return;
@@ -964,7 +968,7 @@ const CONSENT_NOTE = `<p class="consent">Signing in saves your name, email and f
 function privacyHtml(){
   const mail = PRIVACY_CONTACT ? `<a href="mailto:${esc(PRIVACY_CONTACT)}">${esc(PRIVACY_CONTACT)}</a>` : 'the contact on this page';
   const act = cloud.user
-    ? `<div class="pact"><p>You’re signed in as <b>${esc(cloud.user.email||cloud.user.displayName||'')}</b>.</p><button class="btn danger" onclick="deleteAccount()">Delete my account and data</button></div>`
+    ? `<div class="pact"><p>You’re signed in as <b>${esc(cloud.user.email||cloud.user.displayName||'')}</b>. To download or delete your data, go to <a href="#" onclick="openAccount();return false">Account &amp; data</a>.</p></div>`
     : '';
   return `<article class="priv">
 <h2>Privacy &amp; your data</h2><p class="upd">Last updated 17 November 2026</p>
@@ -983,7 +987,8 @@ function privacyHtml(){
 <p>Until you delete your account. If we ever close the site, we’ll delete all accounts.</p>
 <h3>Your rights</h3>
 <ul><li><b>See and correct</b> your data any time in My list.</li>
-<li><b>Withdraw consent and delete everything:</b> use <b>Delete my account</b> in the account menu (your photo, top right). Your name, email and lists are erased immediately. Signing out alone keeps your lists saved.</li>
+<li><b>Get a copy of your data:</b> use <b>Download my data</b> under Account &amp; data in the account menu (your photo, top right).</li>
+<li><b>Withdraw consent and delete everything:</b> use <b>Delete my account</b> under Account &amp; data. Your name, email and lists are erased immediately. Signing out alone keeps your lists saved.</li>
 <li><b>Questions or complaints:</b> write to ${mail}. We’ll reply within 30 days. If you’re not satisfied, you can complain to the Data Protection Board of India.</li></ul>
 <h3>Children</h3>
 <p>Signing in is for adults (18+). Anyone under 18 can use the whole guide without signing in.</p>
@@ -994,6 +999,32 @@ function privacyHtml(){
 <h3>If something goes wrong</h3>
 <p>If your data were ever exposed, we would tell you and the Data Protection Board.</p>
 ${act}</article>`;
+}
+function openAccount(){
+  $('#menu').classList.remove('open');
+  const u = cloud.user; if(!u) return askSignIn();
+  const nw = db.movies.filter(m=>m.status==='want').length, nd = db.movies.filter(m=>m.status==='watched').length;
+  const np = allScreenings().filter(x=>x.s.going).length, nc = db.movies.filter(m=>!isOfficial(m)).length;
+  const since = cloud.consent?.at ? new Date(cloud.consent.at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : '';
+  openModal(`<div class="accpg">
+    <h2>Account &amp; data</h2>
+    <div class="acc-id"><span class="acct-av big">${$('#menuBtn').innerHTML}</span><div><b>${esc(u.displayName||'Signed in')}</b><span>${esc(u.email||'')}</span><small>Signed in with Google</small></div></div>
+    <h3>Your data</h3>
+    <ul class="acc-stats"><li><b>${nw}</b> to watch</li><li><b>${nd}</b> watched</li><li><b>${np}</b> in your plan</li>${nc?`<li><b>${nc}</b> films you added</li>`:''}</ul>
+    <p class="muted">Saved to your account so it syncs across your devices.${since?` You agreed to the privacy notice on ${since}.`:''} <a href="privacy/" onclick="openPrivacy();return false">Privacy notice</a></p>
+    <button class="pillbtn" onclick="downloadMyData()">${IC.download}Download my data</button>
+    <div class="danger-zone">
+      <h3>Delete account</h3>
+      <p class="muted">Permanently erases your name, email and all your lists. This can’t be undone.</p>
+      <button class="pillbtn danger" onclick="deleteAccount()">${IC.trash}Delete my account</button>
+    </div></div>`);
+}
+function downloadMyData(){
+  const u = cloud.user; if(!u) return;
+  const marks = {}; for(const m of db.movies) if(isOfficial(m)){ const e=localMark(m); if(e) marks[m.title]=e; }
+  const data = {exported:new Date().toISOString(), account:{name:u.displayName||'', email:u.email||''}, consent:cloud.consent||null, films:marks, filmsYouAdded:db.movies.filter(m=>!isOfficial(m))};
+  download(`festival-diaries-my-data-${localISO()}.json`, JSON.stringify(data,null,2), 'application/json');
+  toast('Downloaded');
 }
 function openPrivacy(){ $('#menu').classList.remove('open'); openModal(privacyHtml(), ROOT+'privacy/'); syncTitle(); }
 function askConsent(){
@@ -1112,7 +1143,7 @@ function updateCloudMenu(){
   const u=cloud.user, av=$('#menuBtn');
   if(u){ const nm=u.displayName||u.email||'';
     av.innerHTML = u.photoURL ? `<img src="${esc(u.photoURL)}" alt="" referrerpolicy="no-referrer">` : esc((nm[0]||'?').toUpperCase());
-    av.title = nm; $('#cloudState').innerHTML = `<b>${esc(u.displayName||'Signed in')}</b><span>${esc(u.email||'')}</span><small>Your lists are saved to this account</small>`; }
+    av.title = nm; $('#cloudState').innerHTML = `<span class="acct-av">${av.innerHTML}</span><span class="acct-id"><b>${esc(u.displayName||'Signed in')}</b><span>${esc(u.email||'')}</span></span>`; }
 }
 async function cloudInit(){
   try{

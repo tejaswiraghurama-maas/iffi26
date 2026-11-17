@@ -194,9 +194,15 @@ svg.ic{display:none;width:24px;height:24px;fill:none;stroke:currentColor;stroke-
 .avatar img{width:100%;height:100%;object-fit:cover}
 .guest #menu{display:none}
 .menu .dd{min-width:240px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
-.acct{padding:8px 10px 10px;border-bottom:1px solid var(--line);margin-bottom:6px;display:flex;flex-direction:column;gap:1px}
-.acct span{color:var(--muted);font-size:14px;word-break:break-all}.acct small{color:var(--green);font-size:13px;margin-top:4px}
-.menu .dd button{font-size:15.5px;padding:10px}
+.acct{padding:8px 10px 12px;display:flex;align-items:center;gap:12px}
+.acct-av{width:40px;height:40px;flex:none;border-radius:50%;overflow:hidden;background:var(--brand-tint);color:var(--green);display:grid;place-items:center;font-weight:700}
+.acct-av img{width:100%;height:100%;object-fit:cover}.acct-av.big{width:56px;height:56px;font-size:22px}
+.acct-id{display:flex;flex-direction:column;min-width:0}.acct-id b{font-size:15.5px}.acct-id span{color:var(--muted);font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dd-sec{border-top:1px solid var(--line);padding:4px 0}
+.menu .dd .dd-sec button{display:flex;align-items:center;gap:12px;min-height:44px}
+.menu .dd .dd-sec svg{width:20px;height:20px;flex:none;color:var(--muted)}
+.menu .dd button{font-size:15.5px;padding:10px 12px}
+.menu .dd{min-width:260px}
 .guest .st{display:none}
 :focus-visible{outline:3px solid var(--green);outline-offset:2px}
 .card:focus-visible{outline:none}.card:focus-visible .poster{outline:3px solid var(--green)}
@@ -396,6 +402,12 @@ h2.day.sub{margin-top:26px}
 .sharebar span{color:var(--muted);font-size:15px}
 .pillbtn{display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 16px;border:1px solid #c9c9c9;border-radius:999px;background:#fff;font:inherit;font-size:15px;font-weight:600;color:var(--text);cursor:pointer}
 .pillbtn svg{width:18px;height:18px}.pillbtn:hover{border-color:var(--green)}
+.pillbtn.danger{color:var(--red);border-color:#f0c4bf}.pillbtn.danger:hover{background:#fdecea;border-color:var(--red)}
+.accpg h2{margin:0 0 14px;font-size:24px}.accpg h3{font-size:16px;margin:20px 0 8px}
+.acc-id{display:flex;align-items:center;gap:14px}.acc-id div{display:flex;flex-direction:column;min-width:0}.acc-id b{font-size:17px}.acc-id span{color:var(--muted);font-size:14.5px;word-break:break-all}.acc-id small{color:var(--muted);font-size:13px}
+.acc-stats{list-style:none;padding:0;margin:0 0 10px;display:flex;flex-wrap:wrap;gap:8px}.acc-stats li{background:#f3f3f3;border-radius:10px;padding:8px 12px;font-size:14.5px;color:var(--muted)}.acc-stats b{color:var(--text);font-size:17px;margin-right:3px}
+.accpg .muted{color:var(--muted);font-size:14.5px;margin:0 0 12px}.accpg .muted a{color:var(--green)}
+.danger-zone{margin-top:24px;border-top:1px solid var(--line);padding-top:4px}.danger-zone h3{color:var(--red)}
 .pillbtn.on{background:var(--green);border-color:var(--green);color:#fff}
 .icbtn{display:inline-grid;place-items:center;width:40px;height:40px;flex:none;border:1px solid #c9c9c9;border-radius:50%;background:#fff;color:var(--text);cursor:pointer;padding:0}
 .icbtn svg{width:18px;height:18px}.icbtn:hover{border-color:var(--green);color:var(--green)}

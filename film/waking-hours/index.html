@@ -25,7 +25,7 @@
 <link rel="icon" href="favicon.ico" sizes="32x32">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <title>Waking Hours · Festival Diaries · Goa</title>
-<link rel="stylesheet" href="app.css?v=b780f47992">
+<link rel="stylesheet" href="app.css?v=d12d7ac683">
 </head>
 <body class="guest">
 <header>
@@ -43,9 +43,17 @@
       <button class="avatar" id="menuBtn" aria-label="Account" aria-haspopup="true" aria-expanded="false"></button>
       <div class="dd">
         <div id="cloudState" class="acct"></div>
-        <button data-a="privacy">Privacy &amp; your data</button>
-        <button data-a="cloud" id="cloudBtn">Sign out</button>
-        <button data-a="delacct" class="danger">Delete my account</button>
+        <div class="dd-sec" role="menu">
+          <button role="menuitem" data-a="mine"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4.5L6 21z"/></svg>My list</button>
+          <button role="menuitem" data-a="plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>My plan</button>
+        </div>
+        <div class="dd-sec" role="menu">
+          <button role="menuitem" data-a="account"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Account &amp; data</button>
+          <button role="menuitem" data-a="privacy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/></svg>Privacy</button>
+        </div>
+        <div class="dd-sec" role="menu">
+          <button role="menuitem" data-a="cloud" id="cloudBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11"/></svg>Sign out</button>
+        </div>
       </div>
     </div>
   </div>
@@ -60,6 +68,6 @@
 <script src="data.js?v=2a217ced16"></script>
 <input type="file" id="file" accept=".json,application/json" hidden>
 
-<script src="app.js?v=48db2c0e9b"></script>
+<script src="app.js?v=7b84d1f97c"></script>
 </body>
 </html>
