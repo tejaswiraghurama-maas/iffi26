@@ -25,7 +25,7 @@
 <link rel="icon" href="favicon.ico" sizes="32x32">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <title>Atlantic Rhapsody · Festival Diaries · Goa</title>
-<link rel="stylesheet" href="app.css?v=a475caa5d6">
+<link rel="stylesheet" href="app.css?v=a7efd3f14f">
 </head>
 <body class="guest">
 <header>
@@ -38,19 +38,21 @@
     </nav>
     <div class="spacer"></div>
     <input class="search" id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Search films or directors" aria-label="Search films or directors">
-    <button class="btn primary" id="signinBtn" onclick="cloudToggle()">Sign in</button>
+    <button class="btn primary" id="signinBtn" onclick="askSignIn()">Sign in</button>
     <div class="menu" id="menu">
       <button class="avatar" id="menuBtn" aria-label="Account" aria-haspopup="true" aria-expanded="false"></button>
       <div class="dd">
         <div id="cloudState" class="acct"></div>
+        <button data-a="privacy">Privacy &amp; your data</button>
         <button data-a="cloud" id="cloudBtn">Sign out</button>
+        <button data-a="delacct" class="danger">Delete my account</button>
       </div>
     </div>
   </div>
 </header>
 
 <main id="main"></main>
-<footer class="foot-note">Festival Diaries · Goa is an unofficial fan guide to IFFI Goa 2026. Not affiliated with IFFI, the Entertainment Society of Goa or the Government of India.</footer>
+<footer class="foot-note">Festival Diaries · Goa is an unofficial fan guide to IFFI Goa 2026. Not affiliated with IFFI, the Entertainment Society of Goa or the Government of India. <a href="privacy/" onclick="openPrivacy();return false">Privacy &amp; your data</a></footer>
 
 <div class="scrim" id="scrim"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
 <div class="toast" id="toast"></div>
@@ -58,6 +60,6 @@
 <script src="data.js?v=2a217ced16"></script>
 <input type="file" id="file" accept=".json,application/json" hidden>
 
-<script src="app.js?v=df3553c0a3"></script>
+<script src="app.js?v=45fffd1750"></script>
 </body>
 </html>

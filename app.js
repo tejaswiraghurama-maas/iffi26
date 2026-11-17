@@ -66,6 +66,7 @@ function matches(m){
 function officialText(){ return window.__OFFICIAL || document.getElementById('official')?.textContent || ''; }
 const state = { view: 'all', q:'', showPast:false, onlyMine:false, venue:'', section:'', tag:'', mineTab:'want' };
 try{ Object.assign(state, JSON.parse(localStorage.getItem(KEY+'-ui')||'{}'), {q:'', view:'all'}); }catch(e){}
+for(const m of db.movies||[]) for(const x of m.screenings||[]){ if(x.booked) x.going=true; delete x.booked; delete x.seat; }
 const hasShows = () => db.movies.some(m=>(m.screenings||[]).some(s=>s.date));
 function setView(v, fromRoute){ const ch=state.view!==v; state.view=v; persistUI(); if(!fromRoute){ const u=ROOT+(VIEW_PATH[v]||''); if(location.href!==u) history.pushState({view:v},'',u); } syncTitle(); if(ch) window.scrollTo(0,0); render(); }
 /* ---------- URLs ----------
@@ -83,18 +84,20 @@ function routeOf(href){
   p = p.replace(/[?#].*$/,'').replace(/index\.html$/,''); let r;
   if((r=p.match(/^film\/([^/]+)\/?$/))) return {film:decodeURIComponent(r[1])};
   if((r=p.match(/^venue\/([^/]+)\/?$/))) return {venue:decodeURIComponent(r[1])};
+  if(/^privacy\/?$/.test(p)) return {privacy:true};
   if(/^schedule\/?$/.test(p)) return {view:'schedule'};
   if(/^my-list\/?$/.test(p)) return {view:'mine'};
   return {view:'all', unknown:p!==''};
 }
 function syncTitle(){
   const r=routeOf(), m=r.film&&db.movies.find(x=>slug(x.title)===r.film), v=r.venue&&venueById(r.venue);
-  const t = m ? m.title : v ? v.name : VIEW_NAME[r.view||state.view];
+  const t = m ? m.title : v ? v.name : r.privacy ? 'Privacy & your data' : VIEW_NAME[r.view||state.view];
   document.title = t ? t+' · '+SITE : SITE;
 }
 function openRoute(r){
   if(r.film){ const m=db.movies.find(x=>slug(x.title)===r.film); if(m){ openDetail(m.id); return true; } }
   if(r.venue && venueById(r.venue)){ openVenue(r.venue); return true; }
+  if(r.privacy){ openPrivacy(); return true; }
   return false;
 }
 // Startup: work out the page from the URL (also handles old #film= links and GitHub's 404 redirect)
@@ -103,7 +106,7 @@ function initRoute(){
   const hf=(location.hash.match(/film=([^&]+)/)||[])[1], hv=(location.hash.match(/venue=([^&]+)/)||[])[1];
   if(hf) history.replaceState(null,'',ROOT+'film/'+hf+'/'); else if(hv) history.replaceState(null,'',ROOT+'venue/'+hv+'/');
   const r=routeOf();
-  if(r.film||r.venue){ initRoute.pending=r; history.replaceState({view:'all'},'',ROOT); state.view='all'; }
+  if(r.film||r.venue||r.privacy){ initRoute.pending=r; history.replaceState({view:'all'},'',ROOT); state.view='all'; }
   else { state.view=r.view; history.replaceState({view:r.view},'',ROOT+VIEW_PATH[r.view]+(r.unknown?'':location.search)); }
 }
 initRoute();
@@ -239,7 +242,7 @@ function openVenue(id){
   const shows = all.filter(x=>localISO(x.start)===openVenue._day);
   const nx = all[0], live = nx && nx.start<=n;
   let body = '';
-  if(nx) body += `<button class="vnextbox ${live?'live':''}" onclick="openDetail('${nx.m.id}')"><span><small>${live?'Showing now':'Next here'}</small><b>${live?'':fmtTime(nx.start)+' · '}${esc(nx.m.title)}</b><small>${dayWord(nx.start)}${nx.s.screen?' · '+esc(nx.s.screen):''}</small></span>${live?'':`<span class="cd" data-cd="${nx.start.getTime()}"></span>`}</button>`;
+  if(nx) body += `<button class="vnextbox ${live?'live':''}" onclick="openDetail('${nx.m.id}')"><span><small>${live?'Showing now':'Next here'}</small><b>${live?'':fmtTime(nx.start)+' · '}${esc(nx.m.title)}</b><small>${dayWord(nx.start)}${nx.s.screen?' · '+esc(nx.s.screen):''}</small>${live?'':`<span class="cdline"><span class="cd" data-cd="${nx.start.getTime()}"></span> to showtime</span>`}</span></button>`;
   if(days.length>1) body += `<div class="chips vdays">${days.map(d=>{ const dd=new Date(d+'T12:00'); return `<button class="chip ${d===openVenue._day?'on':''}" onclick="openVenue._day='${d}';openVenue('${id}')">${d===today?'Today':dd.toLocaleDateString('en-IN',{weekday:'short',day:'numeric'})}</button>`; }).join('')}</div>`;
   if(shows.length){
     let day='';
@@ -336,18 +339,18 @@ function renderScheduleTime(){
   const next = upcomingMine[0] || allScreenings().find(x => x.start>n && x.m.status==='want');
 
   let html = filterBar() + `<div class="schopts">
-    <label class="mineonly"><input type="checkbox" ${state.onlyMine?'checked':''} onchange="state.onlyMine=this.checked;persistUI();render()"> Only my plan (going / booked)</label>
+    <label class="mineonly"><input type="checkbox" ${state.onlyMine?'checked':''} onchange="state.onlyMine=this.checked;persistUI();render()"> Only shows I’m going to</label>
     <label><input type="checkbox" ${state.showPast?'checked':''} onchange="state.showPast=this.checked;persistUI();render()"> Show past shows</label></div>` + dayChips;
 
   if(next && !state.q){
     html += `<div class="hero" onclick="openDetail('${next.m.id}')" style="cursor:pointer">
       ${poster(next.m)}
       <div style="flex:1;min-width:0">
-        <div class="k">${next.s.booked?'Next booked show':next.s.going?'Next on your plan':'Next on your watchlist'}</div>
+        <div class="k">${next.s.going?'Next on your plan':'Next on your watchlist'}</div>
         <h3>${esc(next.m.title)}</h3>
-        <div class="meta" style="color:var(--muted)">${fmtShort(next.start)} · ${fmtTime(next.start)} · ${esc(next.s.venue||'')}${next.s.screen?' · '+esc(next.s.screen):''}${next.s.seat?' · Seat '+esc(next.s.seat):''}</div>
+        <div class="meta" style="color:var(--muted)">${fmtShort(next.start)} · ${fmtTime(next.start)} · ${esc(next.s.venue||'')}${next.s.screen?' · '+esc(next.s.screen):''}</div>
+        <div class="cdline"><span class="cd" data-cd="${next.start.getTime()}"></span> to showtime</div>
       </div>
-      <div style="text-align:right"><div class="cd" data-cd="${next.start.getTime()}"></div><div style="color:var(--muted);font-size:14px">to showtime</div></div>
     </div>`;
   }
 
@@ -371,7 +374,7 @@ function renderScheduleTime(){
     if(x.ev){ html += evRow(x.ev, true); continue; }
     const past = x.end < n, live = x.start<=n && x.end>n;
     const tags = [
-      x.s.booked ? `<span class="tag booked">Booked</span>` : x.s.going ? `<span class="tag plan">Going</span>` : '',
+      x.s.going ? `<span class="tag plan">Going</span>` : '',
       cl.has(x.s.id) ? `<span class="tag clash">Clash</span>` : '',
       live ? `<span class="tag booked">Now showing</span>` : '',
       x.m.status==='watched' ? `<span class="tag booked">Watched</span>`:'',
@@ -381,15 +384,14 @@ function renderScheduleTime(){
       <div class="mini">${poster(x.m,true)}</div>
       <div class="info">
         <div class="t">${esc(x.m.title)}</div>
-        <div class="meta">📍 ${esc(x.s.venue||'Venue TBA')}${x.s.screen?' · '+esc(x.s.screen):''}${x.s.seat?' · Seat '+esc(x.s.seat):''} · ${runtime(x.m)} min${x.m.language?' · '+esc(x.m.language):''}</div>
+        <div class="meta">📍 ${esc(x.s.venue||'Venue TBA')}${x.s.screen?' · '+esc(x.s.screen):''} · ${runtime(x.m)} min${x.m.language?' · '+esc(x.m.language):''}</div>
         ${x.s.note?`<div class="snote">${esc(x.s.note)}</div>`:''}
         <div style="margin-top:4px">${tags}${x.m.section?`<span class="tag sec">${esc(x.m.section)}</span>`:''}</div>
       </div>
       <div class="acts" onclick="event.stopPropagation()">
         ${x.m.status==='watched' ? '' : past
           ? `<button class="btn sm" onclick="quickWatched('${x.m.id}','${x.s.id}')">✓ Mark watched</button>`
-          : `<button class="btn sm" onclick="toggleS('${x.m.id}','${x.s.id}','going')">${x.s.going?'✓ Going':'+ Going'}</button>
-             <button class="btn sm" onclick="toggleS('${x.m.id}','${x.s.id}','booked')">${x.s.booked?'🎟 Booked':'Book'}</button>`}
+          : `<button class="btn sm" onclick="toggleS('${x.m.id}','${x.s.id}','going')">${x.s.going?'✓ Going':'+ Going'}</button>`}
       </div>
     </div>`;
   }
@@ -428,7 +430,7 @@ function renderGrid(kind){
   return html + `<div class="grid">${list.map(m=>cardHtml(m)).join('')}</div>`;
 }
 function renderMine(){
-  if(!cloud.user) return `<div class="empty ask" style="max-width:420px;margin:30px auto"><h2>Your list lives here</h2><p>Sign in with Google to save films and keep track of what you’ve watched – on any device.</p><button class="btn primary" onclick="cloudToggle()">Sign in with Google</button></div>`;
+  if(!cloud.user) return `<div class="empty ask" style="max-width:420px;margin:30px auto"><h2>Your list lives here</h2><p>Sign in with Google to save films and keep track of what you’ve watched – on any device.</p><button class="btn primary" onclick="cloudToggle()">Continue with Google</button>${CONSENT_NOTE}</div>`;
   const nw = db.movies.filter(m=>m.status==='want').length, nd = db.movies.filter(m=>m.status==='watched').length;
   const t = state.mineTab==='watched' ? 'watched' : 'want';
   return `<div class="mseg" role="tablist"><button role="tab" aria-selected="${t==='want'}" class="${t==='want'?'on':''}" onclick="state.mineTab='want';persistUI();render()">To watch<small>${nw}</small></button><button role="tab" aria-selected="${t==='watched'}" class="${t==='watched'?'on':''}" onclick="state.mineTab='watched';persistUI();render()">Watched<small>${nd}</small></button></div>` + renderGrid(t);
@@ -468,7 +470,7 @@ function renderStats(){
   const avg = rated.length ? (rated.reduce((t,m)=>t+m.rating,0)/rated.length).toFixed(1) : '–';
   const countries = new Set(w.map(m=>m.country).filter(Boolean));
   const n=now();
-  const booked = allScreenings().filter(x=>x.s.booked && x.start>n).length;
+  const goingN = allScreenings().filter(x=>x.s.going && x.start>n).length;
   const by = (arr,key) => Object.entries(arr.reduce((o,m)=>{ const k=m[key]||'Unknown'; o[k]=(o[k]||0)+1; return o; },{})).sort((a,b)=>b[1]-a[1]);
   const bar = (rows) => { const max = Math.max(1,...rows.map(r=>r[1])); return rows.slice(0,8).map(([k,v])=>`<div style="display:flex;align-items:center;gap:10px;margin:6px 0"><div style="width:180px;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(k)}</div><div style="flex:1;background:var(--bg);border-radius:4px;height:16px"><div style="width:${v/max*100}%;height:100%;background:var(--green);border-radius:4px"></div></div><div style="width:24px;text-align:right;font-size:15px">${v}</div></div>`).join('') || '<div style="color:var(--muted)">Nothing yet</div>'; };
   const top = [...rated].sort((a,b)=>b.rating-a.rating).slice(0,6);
@@ -478,7 +480,7 @@ function renderStats(){
     <div class="stat"><b>${avg}</b><span>average rating</span></div>
     <div class="stat"><b>${countries.size}</b><span>countries visited</span></div>
     <div class="stat"><b>${db.movies.filter(m=>m.status==='want').length}</b><span>still on watchlist</span></div>
-    <div class="stat"><b>${booked}</b><span>upcoming booked shows</span></div>
+    <div class="stat"><b>${goingN}</b><span>upcoming shows you’re going to</span></div>
   </div>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">
     <div class="stat"><div style="font-weight:700;margin-bottom:6px">Watched by section</div>${bar(by(w,'section'))}</div>
@@ -500,7 +502,6 @@ const find = id => db.movies.find(m=>m.id===id);
 function toggleS(mid,sid,field){
   const m=find(mid), s=m.screenings.find(s=>s.id===sid);
   s[field]=!s[field];
-  if(field==='booked' && s.booked) s.going=true;
   if(m.status==='none' && (s.going||s.booked)) m.status='want';
   save(); render(); if($('#scrim').classList.contains('open')) openDetail(mid);
   if(s[field] && clashes().has(s.id)) toast('⚠️ Heads up: this overlaps another show on your plan, or leaves too little time to travel');
@@ -525,7 +526,7 @@ function toggleLike(mid){ const m=find(mid); m.liked=!m.liked; save(); render();
 function quickSave(mid){ if(!cloud.user) return askSignIn(mid,'want'); const m=find(mid); if(!m) return; m.status = m.status==='want' ? 'none' : 'want'; save(); render(); toast(m.status==='want'?'Saved to My list':'Removed from My list'); }
 function askSignIn(mid,st){
   const m=find(mid), back=$('#scrim').classList.contains('open'); cloud.pending = m ? {t:m.title.toLowerCase(), st} : null;
-  openModal(`<div class="ask"><h2>${st==='watched'?'Keep track of what you watch':'Save films to your list'}</h2><p>Sign in with Google so your list is saved to your account and works on all your devices.</p><button class="btn primary" onclick="cloudToggle()">Sign in with Google</button><button class="btn" onclick="${m&&back?`openDetail('${m.id}')`:'closeModal()'}">Not now</button></div>`);
+  openModal(`<div class="ask"><h2>${st==='watched'?'Keep track of what you watch':m?'Save films to your list':'Sign in to save your list'}</h2><p>Sign in with Google so your list is saved to your account and works on all your devices.</p><button class="btn primary" onclick="cloudToggle()">Continue with Google</button><button class="btn" onclick="${m&&back?`openDetail('${m.id}')`:'closeModal()'}">Not now</button>${CONSENT_NOTE}</div>`);
 }
 const slug = t => String(t||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 const ytUrl = m => 'https://www.youtube.com/results?search_query=' + encodeURIComponent(`${m.title} ${m.director||''} trailer`.replace(/\s+/g,' '));
@@ -561,7 +562,7 @@ function closeModal(fromBack){ if(!$('#scrim').classList.contains('open')) retur
 window.addEventListener('popstate', ()=>{ if($('#sheet').classList.contains('open')) closeSheet(true); else if($('#scrim').classList.contains('open')) closeModal(true); });
 window.addEventListener('popstate', ()=>{   // keep the page in step with the URL (back / forward)
   const r=routeOf();
-  if(r.film||r.venue){ if(!$('#scrim').classList.contains('open')) openRoute(r); }
+  if(r.film||r.venue||r.privacy){ if(!$('#scrim').classList.contains('open')) openRoute(r); }
   else if(state.view!==r.view) setView(r.view, true);
   syncTitle();
 });
@@ -607,11 +608,11 @@ function openDetail(id){
         <span style="color:var(--muted);font-size:15px">📍 ${s.venue?(venueOf(s.venue)?`<a class="vlink" href="${venueURL(venueOf(s.venue))}" onclick="event.preventDefault();openVenue('${venueOf(s.venue).id}')">${esc(s.venue)}</a>`:`<a class="vlink" href="${mapUrl(s.venue)}" target="_blank" rel="noopener">${esc(s.venue)}</a>`):'Venue TBA'}${s.screen?' · '+esc(s.screen):''}${s.seat?' · Seat '+esc(s.seat):''}</span>
         ${s.note?`<div class="snote">${esc(s.note)}</div>`:''}
         <span style="font-size:14px;margin-left:6px">${s.source?srcLink(s.source,'Source'):'<span style="color:var(--muted)">· no source</span>'}</span>
-        <div>${s.booked?'<span class="tag booked">Booked</span>':s.going?'<span class="tag plan">Going</span>':''}${cl.has(s.id)?'<span class="tag clash">Clash</span>':''}${m.watchedAt===s.id?'<span class="tag booked">Watched here</span>':''}</div>
+        <div>${s.going?'<span class="tag plan">Going</span>':''}${cl.has(s.id)?'<span class="tag clash">Clash</span>':''}${m.watchedAt===s.id?'<span class="tag booked">Watched here</span>':''}</div>
       </div>
       <div class="acts" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${past
         ? (m.status!=='watched'?`<button class="btn sm" onclick="quickWatched('${m.id}','${s.id}')">✓ Watched this</button>`:'')
-        : `<button class="btn sm" onclick="toggleS('${m.id}','${s.id}','going')">${s.going?'✓ Going':'+ Going'}</button><button class="btn sm" onclick="toggleS('${m.id}','${s.id}','booked')">${s.booked?'🎟 Booked':'Book'}</button>${s.going||s.booked?`<button class="btn sm" onclick="addToCal('${m.id}','${s.id}')">📅 Add to calendar</button>`:''}`}</div>
+        : `<button class="btn sm" onclick="toggleS('${m.id}','${s.id}','going')">${s.going?'✓ Going':'+ Going'}</button>${s.going?`<button class="btn sm" onclick="addToCal('${m.id}','${s.id}')">📅 Add to calendar</button>`:''}`}</div>
     </div>`;}).join('') : ''}</div>
   `, filmURL(m));
 }
@@ -660,17 +661,15 @@ function drawScr(){
     <input type="time" value="${esc(s.time||'')}" oninput="editScr[${i}].time=this.value">
     <input list="venues" placeholder="Venue" value="${esc(s.venue||'')}" oninput="editScr[${i}].venue=this.value">
     <input placeholder="Screen / Audi" value="${esc(s.screen||'')}" oninput="editScr[${i}].screen=this.value">
-    <input placeholder="Seat" value="${esc(s.seat||'')}" oninput="editScr[${i}].seat=this.value">
     <input placeholder="Source (link)" value="${esc(s.source||'')}" oninput="editScr[${i}].source=this.value">
     <div style="display:flex;gap:6px;align-items:center">
-      <label class="chk"><input type="checkbox" ${s.booked?'checked':''} onchange="editScr[${i}].booked=this.checked">Booked</label>
       <button type="button" class="btn sm danger" onclick="editScr.splice(${i},1);drawScr()">✕</button>
     </div>
   </div>`).join('') : `<div style="color:var(--muted);font-size:15px">No showtimes. You can add them later.</div>`;
 }
 function addScr(){
   const last = editScr[editScr.length-1];
-  editScr.push({id:uid(), date: last?.date || defaultDate(), time:'', venue:last?.venue||'', screen:'', seat:'', source:'', booked:false, going:false});
+  editScr.push({id:uid(), date: last?.date || defaultDate(), time:'', venue:last?.venue||'', screen:'', source:'', going:false});
   drawScr();
 }
 function defaultDate(){ return localISO(); }
@@ -682,7 +681,7 @@ function submitEdit(id){
   data.confirmed = {on: !!fd.get('confirmedOn'), source: (data.confirmedSource||'').trim()};
   delete data.confirmedOn; delete data.confirmedSource;
   data.runtime = data.runtime ? +data.runtime : '';
-  const scr = editScr.filter(s=>s.date).map(s=>({...s, going: s.going || s.booked}));
+  const scr = editScr.filter(s=>s.date).map(s=>({...s, going: !!(s.going || s.booked), booked:false, seat:''}));
   scr.forEach(s=>{ if(s.venue && !db.venues.includes(s.venue)) db.venues.splice(db.venues.length-1,0,s.venue); });
   let m;
   const idKey = x => [x.title,x.originalTitle,x.year,x.imdbID].join('|');
@@ -768,6 +767,8 @@ function menuAction(a){
   if(a==='ratings') fetchAll();
   if(a==='key') setKey();
   if(a==='cloud') cloudToggle();
+  if(a==='privacy') openPrivacy();
+  if(a==='delacct') deleteAccount();
 }
 $('#file').onchange = async e => {
   const f=e.target.files[0]; if(!f) return;
@@ -786,7 +787,7 @@ $('#file').onchange = async e => {
         if(ex){
           if(screenings.some(s=>s.off)){   // official schedule: replace earlier official showtimes, keep your own picks
             const prev=Object.fromEntries((ex.screenings||[]).filter(s=>s.off).map(s=>[s.id,s]));
-            ex.screenings = [...(ex.screenings||[]).filter(s=>!s.off), ...screenings.map(s=>({...s, going:!!prev[s.id]?.going, booked:!!prev[s.id]?.booked, seat:prev[s.id]?.seat||''}))];
+            ex.screenings = [...(ex.screenings||[]).filter(s=>!s.off), ...screenings.map(s=>({...s, going:!!(prev[s.id]?.going||prev[s.id]?.booked), booked:false, seat:''}))];
           } else ex.screenings = [...(ex.screenings||[]), ...screenings.filter(s=>!ex.screenings.some(o=>o.date===s.date&&o.time===s.time&&o.venue===s.venue))];
           for(const k of ['notes','originalTitle','genre','genreUnverified','recRank','director','country','language','year','runtime','section','synopsis','poster','link','cast','festivals','premiere','pc']) if(k in m) ex[k]=m[k];   // official list is the source of truth
           ex.tags = m.tags ? [...m.tags] : (ex.tags||[]);   // official list decides the tags
@@ -812,11 +813,11 @@ async function loadOfficial(){
 }
 function exportICS(){
   const ev = allScreenings().filter(x=>x.s.booked||x.s.going);
-  if(!ev.length) return toast('Mark some shows as Going or Booked first');
+  if(!ev.length) return toast('Mark some shows as Going first');
   const f = d => d.toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'');
   const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Festival Diaries Goa//EN'];
   for(const x of ev) lines.push('BEGIN:VEVENT',`UID:${x.s.id}@iffi-diary`,`DTSTAMP:${f(new Date())}`,`DTSTART:${f(x.start)}`,`DTEND:${f(x.end)}`,
-    `SUMMARY:${(x.s.booked?'🎟 ':'')+x.m.title}`,`LOCATION:${[x.s.venue,x.s.screen].filter(Boolean).join(' - ')}`,`DESCRIPTION:${[x.m.director&&'Dir. '+x.m.director,x.m.section,x.s.seat&&'Seat '+x.s.seat].filter(Boolean).join(' | ')}`,'END:VEVENT');
+    `SUMMARY:${x.m.title}`,`LOCATION:${[x.s.venue,x.s.screen].filter(Boolean).join(' - ')}`,`DESCRIPTION:${[x.m.director&&'Dir. '+x.m.director,x.m.section].filter(Boolean).join(' | ')}`,'END:VEVENT');
   lines.push('END:VCALENDAR');
   download('iffi-shows.ics', lines.join('\r\n'), 'text/calendar');
 }
@@ -835,35 +836,98 @@ function loadDemo(){
   const base = new Date(); base.setHours(0,0,0,0);
   const day = k => { const d=new Date(base); d.setDate(d.getDate()+k); return localISO(d); };
   const demo = [
-    {title:'The Salt Orchard', director:'Demo Director A', country:'Portugal', language:'Portuguese', year:2026, runtime:104, section:'International Competition', priority:true, synopsis:'(Demo) A widowed fisherman inherits a failing orchard on a windswept coast.', screenings:[{date:day(5),time:'10:00',venue:'INOX Panaji (Old GMC)',screen:'Audi 1',booked:true,going:true,seat:'F12'},{date:day(7),time:'17:30',venue:'Maquinez Palace',screen:'Screen 2'}]},
+    {title:'The Salt Orchard', director:'Demo Director A', country:'Portugal', language:'Portuguese', year:2026, runtime:104, section:'International Competition', priority:true, synopsis:'(Demo) A widowed fisherman inherits a failing orchard on a windswept coast.', screenings:[{date:day(5),time:'10:00',venue:'INOX Panaji (Old GMC)',screen:'Audi 1',going:true,going:true,seat:'F12'},{date:day(7),time:'17:30',venue:'Maquinez Palace',screen:'Screen 2'}]},
     {title:'Monsoon Ledger', director:'Demo Director B', country:'India', language:'Konkani', year:2026, runtime:118, section:'Indian Panorama – Feature', synopsis:'(Demo) An accountant in Margao finds a decades-old ledger.', screenings:[{date:day(5),time:'11:15',venue:'Kala Academy',screen:'Dinanath Mangeshkar Hall',going:true},{date:day(8),time:'20:00',venue:'INOX Porvorim',screen:'Audi 3'}]},
     {title:'Paper Lanterns Over Seoul', director:'Demo Director C', country:'South Korea', language:'Korean', year:2025, runtime:96, section:'Cinema of the World', screenings:[{date:day(6),time:'14:00',venue:'INOX Panaji (Old GMC)',screen:'Audi 4'}]},
     {title:'Northern Quiet', director:'Demo Director D', country:'Finland', language:'Finnish', year:2026, runtime:89, section:'Best Debut Feature', screenings:[{date:day(6),time:'19:45',venue:'Maquinez Palace',screen:'Screen 1'}]},
-    {title:'The Last Projectionist', director:'Demo Director E', country:'Iran', language:'Persian', year:2025, runtime:110, section:'Festival Kaleidoscope', status:'watched', rating:4.5, liked:true, watchedOn:day(-1), review:'(Demo) Gorgeous love letter to cinema.', screenings:[{date:day(-1),time:'18:00',venue:'INOX Panaji (Old GMC)',screen:'Audi 2',booked:true,going:true}]},
+    {title:'The Last Projectionist', director:'Demo Director E', country:'Iran', language:'Persian', year:2025, runtime:110, section:'Festival Kaleidoscope', status:'watched', rating:4.5, liked:true, watchedOn:day(-1), review:'(Demo) Gorgeous love letter to cinema.', screenings:[{date:day(-1),time:'18:00',venue:'INOX Panaji (Old GMC)',screen:'Audi 2',going:true,going:true}]},
   ];
-  for(const d of demo){ db.movies.push({status:'want', rating:0, ...d, id:uid(), added:Date.now(), screenings:d.screenings.map(s=>({id:uid(),seat:'',booked:false,going:false,...s}))}); }
+  for(const d of demo){ db.movies.push({status:'want', rating:0, ...d, id:uid(), added:Date.now(), screenings:d.screenings.map(s=>({id:uid(),going:false,...s}))}); }
   save(); render(); toast('Demo films added — delete them whenever you like');
+}
+
+/* ---------- privacy notice (India DPDP Act 2023) ---------- */
+const PRIVACY_V = 1;
+const PRIVACY_CONTACT = 'tejaswiraghurama@gmail.com';   // grievance e-mail shown in the notice
+const CONSENT_NOTE = `<p class="consent">Signing in saves your name, email and film lists so they sync across your devices. Nothing else is collected. <a href="privacy/" onclick="openPrivacy();return false">Privacy notice</a></p>`;
+function privacyHtml(){
+  const mail = PRIVACY_CONTACT ? `<a href="mailto:${esc(PRIVACY_CONTACT)}">${esc(PRIVACY_CONTACT)}</a>` : 'the contact on this page';
+  const act = cloud.user
+    ? `<div class="pact"><p>You’re signed in as <b>${esc(cloud.user.email||cloud.user.displayName||'')}</b>.</p><button class="btn danger" onclick="deleteAccount()">Delete my account and data</button></div>`
+    : '';
+  return `<article class="priv">
+<h2>Privacy &amp; your data</h2><p class="upd">Last updated 17 November 2026</p>
+<p>Festival Diaries · Goa is a free, unofficial fan guide to IFFI Goa 2026, run privately by a film fan – not a company. This notice explains what we collect and why, in line with India’s Digital Personal Data Protection Act, 2023.</p>
+<h3>If you don’t sign in</h3>
+<p>We collect nothing. Anything you do stays on your own phone or computer. There are no ads, no analytics and no tracking cookies.</p>
+<h3>If you sign in with Google</h3>
+<p>We store:</p>
+<ul><li>your <b>name, email address and profile photo</b>, which Google shares when you sign in</li>
+<li>your <b>film lists</b> – films you want to see or have seen, showtimes you’re going to, ratings, notes and any films you add</li>
+<li>the date you agreed to this notice</li></ul>
+<p><b>Why:</b> only to save your lists and show them on all your devices. We never sell or share your data, and never use it for advertising.</p>
+<h3>Where it’s kept</h3>
+<p>On Google Firebase, which may store it on servers outside India. Google handles it for us under its own security and privacy terms.</p>
+<h3>How long we keep it</h3>
+<p>Until you delete your account. If we ever close the site, we’ll delete all accounts.</p>
+<h3>Your rights</h3>
+<ul><li><b>See and correct</b> your data any time in My list.</li>
+<li><b>Withdraw consent and delete everything:</b> use <b>Delete my account</b> in the account menu (your photo, top right). Your name, email and lists are erased immediately. Signing out alone keeps your lists saved.</li>
+<li><b>Questions or complaints:</b> write to ${mail}. We’ll reply within 30 days. If you’re not satisfied, you can complain to the Data Protection Board of India.</li></ul>
+<h3>Children</h3>
+<p>Signing in is for adults (18+). Anyone under 18 can use the whole guide without signing in.</p>
+<h3>Other sites</h3>
+<p>Trailer, map, calendar and ratings links open other sites (YouTube, Google Maps, IMDb and others), which have their own privacy policies. If you add an OMDb key for ratings, it stays on your device.</p>
+<h3>If something goes wrong</h3>
+<p>If your data were ever exposed, we would tell you and the Data Protection Board.</p>
+${act}</article>`;
+}
+function openPrivacy(){ $('#menu').classList.remove('open'); openModal(privacyHtml(), ROOT+'privacy/'); syncTitle(); }
+function askConsent(){
+  openModal(`<div class="ask"><h2>We’ve added a privacy notice</h2><p>Your name, email and film lists are saved to your account so they sync across devices. Nothing else is collected.</p><button class="btn primary" onclick="agreeConsent()">OK, keep syncing</button><button class="btn" onclick="openPrivacy()">Read the notice</button><button class="btn danger" onclick="deleteAccount()">Delete my account</button></div>`);
+}
+function agreeConsent(){ cloud.consent={v:PRIVACY_V, at:Date.now()}; pushNow(); closeModal(); toast('Thanks – your list stays synced'); }
+async function deleteAccount(){
+  $('#menu').classList.remove('open');
+  if(!cloud.user || !cloud.fb) return;
+  if(!confirm('Delete your account?\n\nThis permanently erases your name, email and all your saved lists. It can’t be undone.')) return;
+  const {doc, deleteDoc, deleteUser, reauthenticateWithPopup, GoogleAuthProvider, signOut} = cloud.fb, auth = cloud.fb.auth, u = auth.currentUser;
+  clearTimeout(cloud.t); cloud.ready=false; if(cloud.unsub){ cloud.unsub(); cloud.unsub=null; }
+  let listsGone=false;
+  try{
+    await deleteDoc(doc(cloud.fb.store,'users',u.uid)); listsGone=true;
+    cloud.deleting=true;
+    try{ await deleteUser(u); }
+    catch(e){ if(e.code!=='auth/requires-recent-login') throw e;
+      toast('Please confirm with Google to finish'); await reauthenticateWithPopup(u, new GoogleAuthProvider()); await deleteUser(u); }
+    closeModal(); toast('Your account and data have been deleted');
+  }catch(e){
+    console.warn(e);
+    if(listsGone){ cloud.deleting=true; await signOut(auth).catch(()=>{}); closeModal();
+      alert('Your lists were deleted, but your sign-in record wasn’t.\n\nSign in again and choose Delete my account to finish.'); }
+    else { cloud.deleting=false; cloud.ready=true; toast('Could not delete – please try again'); }
+  }
 }
 
 /* ---------- online sync (optional Google sign-in) ---------- */
 const FB_CFG = {apiKey:"AIzaSyA6mBtRlKHFojWP46-KuL5AjdRmTR2TD-c",authDomain:"iffi26-8579d.firebaseapp.com",projectId:"iffi26-8579d",storageBucket:"iffi26-8579d.firebasestorage.app",messagingSenderId:"798581706323",appId:"1:798581706323:web:b4725dfb07f67087e440a6"};
 const FBV = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const MARK_FIELDS = ['status','priority','rating','liked','review','watchedOn'];
-const cloud = {fb:null, user:null, ready:false, marks:{}, known:new Set(), unsub:null, t:null};
+const cloud = {fb:null, user:null, ready:false, marks:{}, known:new Set(), unsub:null, t:null, consent:null, agreed:false, deleting:false};
 const tkey = m => String(m.title||'').trim().toLowerCase();
 const skey = s => [s.date,s.time,s.venue].join('|');
 let OFFICIAL_T = new Set(); try{ OFFICIAL_T = new Set(JSON.parse(officialText()).movies.map(tkey)); }catch(e){}
 const isOfficial = m => OFFICIAL_T.has(tkey(m));
 function localMark(m){
   const f={}; for(const k of MARK_FIELDS){ const v=m[k]; if(v!==undefined && v!==null && v!=='' && v!==false && v!==0 && !(k==='status'&&v==='none')) f[k]=v; }
-  const s={}; for(const x of m.screenings||[]) if(x.going||x.booked||x.seat) s[skey(x)]={going:!!x.going,booked:!!x.booked,seat:x.seat||''};
+  const s={}; for(const x of m.screenings||[]) if(x.going||x.booked) s[skey(x)]={going:true};
   const w = m.watchedAt ? (m.screenings||[]).find(x=>x.id===m.watchedAt) : null;
   const e={}; if(Object.keys(f).length) e.f=f; if(Object.keys(s).length) e.s=s; if(w) e.wa=skey(w);
   return Object.keys(e).length ? e : null;
 }
 function setMark(m,e){
   for(const k of MARK_FIELDS){ const v=e?.f?.[k]; if(v===undefined){ if(k==='status') m.status='none'; else delete m[k]; } else m[k]=v; }
-  for(const x of m.screenings||[]){ const r=e?.s?.[skey(x)]; x.going=!!r?.going; x.booked=!!r?.booked; x.seat=r?.seat||''; }
+  for(const x of m.screenings||[]){ const r=e?.s?.[skey(x)]; x.going=!!(r?.going||r?.booked); x.booked=false; x.seat=''; }
   m.watchedAt = e?.wa ? (m.screenings||[]).find(x=>skey(x)===e.wa)?.id : undefined;
 }
 const clean = o => JSON.parse(JSON.stringify(o));
@@ -886,7 +950,7 @@ async function pushNow(){
   if(fixed){ _localSave(); render(); }
   cloud.marks = marks;
   const {doc,setDoc} = cloud.fb;
-  try{ await setDoc(doc(cloud.fb.store,'users',cloud.user.uid), clean({marks, custom:db.movies.filter(m=>!isOfficial(m)), updated:Date.now()})); }
+  try{ await setDoc(doc(cloud.fb.store,'users',cloud.user.uid), clean({marks, custom:db.movies.filter(m=>!isOfficial(m)), consent:cloud.consent||undefined, updated:Date.now()})); }
   catch(e){ console.warn(e); toast('Could not save online – will retry'); pushSoon(); }
 }
 const _localSave = save;
@@ -894,6 +958,10 @@ save = function(){ _localSave(); if(cloud.user && cloud.ready) pushSoon(); };
 document.addEventListener('visibilitychange', ()=>{ if(document.hidden && cloud.t) pushNow(); });
 async function onUser(u){
   cloud.user=u; cloud.ready=false; if(cloud.unsub){ cloud.unsub(); cloud.unsub=null; }
+  if(!u && cloud.deleting){   // account just deleted: forget everything on this device too
+    cloud.deleting=false; cloud.consent=null; clearLocalMarks(); try{ localStorage.removeItem(KEY+'-parked'); }catch(e){}
+    updateCloudMenu(); return;
+  }
   if(!u){   // signed out: park any marks on this phone so they're hidden, and add them to the account at next sign-in
     const park={}; for(const m of db.movies){ if(isOfficial(m)){ const e=localMark(m); if(e) park[tkey(m)]=e; } else park['custom:'+tkey(m)]=clean(m); }
     if(Object.keys(park).length){ try{ const old=JSON.parse(localStorage.getItem(KEY+'-parked')||'{}'); localStorage.setItem(KEY+'-parked', JSON.stringify({...old,...park})); }catch(e){} clearLocalMarks(); }
@@ -903,6 +971,7 @@ async function onUser(u){
   const {doc,getDoc,onSnapshot} = cloud.fb, ref = doc(cloud.fb.store,'users',u.uid);
   try{
     const snap = await getDoc(ref), remote = snap.exists() ? snap.data() : {marks:{},custom:[]};
+    cloud.consent = remote.consent?.v>=PRIVACY_V ? remote.consent : cloud.agreed ? {v:PRIVACY_V, at:Date.now()} : null;
     const marks = {...(remote.marks||{})};
     for(const m of db.movies) if(isOfficial(m)){ const t=tkey(m), e=localMark(m); if(e && !marks[t]) marks[t]=e; }   // keep this phone's activity
     let parked={}; try{ parked=JSON.parse(localStorage.getItem(KEY+'-parked')||'{}'); localStorage.removeItem(KEY+'-parked'); }catch(e){}
@@ -915,7 +984,8 @@ async function onUser(u){
     const pd = cloud.pending; cloud.pending = null;
     const pm = pd && db.movies.find(m=>m.title.toLowerCase()===pd.t);
     if(pm){ pm.status = pd.st; if(pd.st==='watched' && !pm.watchedOn) pm.watchedOn = localISO(); save(); render(); openDetail(pm.id); toast(pd.st==='want'?'Signed in – saved to My list':'Signed in – marked as watched'); }
-    else { if($('#scrim').classList.contains('open') && $('#modal .ask')) closeModal(); toast('Signed in – your list is saved online'); }
+    else if(cloud.agreed){ if($('#scrim').classList.contains('open') && $('#modal .ask')) closeModal(); toast('Signed in – your list is saved online'); }
+    if(!cloud.consent) askConsent();   // signed in before the privacy notice existed
   }catch(e){ console.warn(e); toast('Could not reach online storage'); }
 }
 function clearLocalMarks(){
@@ -943,6 +1013,7 @@ async function cloudToggle(){
   const {auth, GoogleAuthProvider, signInWithPopup, signOut} = cloud.fb;
   if(cloud.user){ if(confirm('Sign out? Your lists stay saved in your account.')){ await pushNow(); await signOut(auth); clearLocalMarks(); render(); toast('Signed out'); } return; }
   const p = new GoogleAuthProvider();
+  cloud.agreed = true;   // every sign-in button sits next to the privacy notice
   try{ await signInWithPopup(auth, p); }
   catch(e){ const c=e.code||'';
     if(/popup-blocked|operation-not-supported|web-storage/.test(c)) alert('Sign-in window was blocked.\n\nOpen this site directly in Safari or Chrome (not inside WhatsApp or another app), allow pop-ups, and try again.');
