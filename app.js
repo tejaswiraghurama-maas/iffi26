@@ -746,6 +746,7 @@ function openDetail(id){
       ${meta?`<div class="dmeta">${meta}</div>`:''}
       ${m.director?`<div class="dmeta">Directed by <b>${esc(m.director)}</b></div>`:''}
       ${m.section?`<div class="dmeta">${esc(m.section)}</div>`:''}
+      <div class="dmeta wlc" data-f="${wlSlug(m)}" hidden></div>
       ${confirmInfo(m)?`<span class="tag booked" style="margin-top:6px">✓ Screening confirmed</span>`:''}
     </div>
   </div>
@@ -773,6 +774,7 @@ function openDetail(id){
         : `<button class="btn sm" onclick="toggleS('${m.id}','${s.id}','going')">${s.going?'✓ Going':'+ Going'}</button>${s.going?`<button class="btn sm" onclick="addToCal('${m.id}','${s.id}')">📅 Add to calendar</button>`:''}`}</div>
     </div>`;}).join('') : ''}</div>
   `, filmURL(m));
+  fillCount(m);
 }
 
 let editScr = [];
@@ -1037,6 +1039,8 @@ function privacyHtml(){
 <li><b>Questions or complaints:</b> write to ${mail}. We’ll reply within 30 days. If you’re not satisfied, you can complain to the Data Protection Board of India.</li></ul>
 <h3>Children</h3>
 <p>Signing in is for adults (18+). Anyone under 18 can use the whole guide without signing in.</p>
+<h3>Watchlist counts</h3>
+<p>When you save a film to your watchlist while signed in, it adds one to that film’s count, such as “3 people want to see this”. Only the number is shown – never your name or who saved it. Removing the film, or deleting your account, takes you out of the count.</p>
 <h3>Shared lists</h3>
 <p>If you share your watchlist, the link shows your first name and the films on it to anyone you send it to. Nothing is stored for it.</p>
 <h3>Other sites</h3>
@@ -1084,6 +1088,9 @@ async function deleteAccount(){
   clearTimeout(cloud.t); cloud.ready=false; if(cloud.unsub){ cloud.unsub(); cloud.unsub=null; }
   let listsGone=false;
   try{
+    const fs = new Set([...wlMine(), ...db.movies.filter(m=>m.status==='want').map(wlSlug).filter(Boolean)]);
+    await Promise.all([...fs].map(f=>deleteDoc(doc(cloud.fb.store,'counts',f,'by',u.uid)).catch(()=>{})));
+    try{ localStorage.removeItem(WL_KEY(u.uid)); }catch(e){}
     await deleteDoc(doc(cloud.fb.store,'users',u.uid)); listsGone=true;
     cloud.deleting=true;
     try{ await deleteUser(u); }
@@ -1127,7 +1134,7 @@ function applyRemote(data){
   if(same && cloud.ready) return;
   for(const m of db.movies) if(isOfficial(m)){ setMark(m, marks[tkey(m)]); cloud.known.add(tkey(m)); }
   db.movies = db.movies.filter(isOfficial).concat(custom);
-  _localSave(); render();
+  _localSave(); render(); if(cloud.ready) syncCounts();
 }
 function pushSoon(){ clearTimeout(cloud.t); cloud.t = setTimeout(pushNow, 1200); }
 async function pushNow(){
@@ -1139,7 +1146,7 @@ async function pushNow(){
   if(fixed){ _localSave(); render(); }
   cloud.marks = marks;
   const {doc,setDoc} = cloud.fb;
-  try{ await setDoc(doc(cloud.fb.store,'users',cloud.user.uid), clean({marks, custom:db.movies.filter(m=>!isOfficial(m)), consent:cloud.consent||undefined, updated:Date.now()})); }
+  try{ await setDoc(doc(cloud.fb.store,'users',cloud.user.uid), clean({marks, custom:db.movies.filter(m=>!isOfficial(m)), consent:cloud.consent||undefined, updated:Date.now()})); syncCounts(); }
   catch(e){ console.warn(e); toast('Could not save online – will retry'); pushSoon(); }
 }
 const _localSave = save;
@@ -1191,6 +1198,47 @@ function updateCloudMenu(){
     av.innerHTML = u.photoURL ? `<img src="${esc(u.photoURL)}" alt="" referrerpolicy="no-referrer">` : esc((nm[0]||'?').toUpperCase());
     av.title = nm; $('#cloudState').innerHTML = `<span class="acct-av">${av.innerHTML}</span><span class="acct-id"><b>${esc(u.displayName||'Signed in')}</b><span>${esc(u.email||'')}</span></span>`; }
 }
+/* ---------- how many people want to see a film ----------
+   Saving a film while signed in adds an empty marker at counts/<film>/by/<your id>; removing it deletes the marker.
+   The page only ever reads the total, never who. */
+const WL_KEY = u => 'fd-wl-'+u;
+const wlSlug = m => _slug(m.title);
+function wlMine(){ try{ return new Set(JSON.parse(localStorage.getItem(WL_KEY(cloud.user.uid))||'[]')); }catch(e){ return new Set(); } }
+function wlKeep(set){ try{ localStorage.setItem(WL_KEY(cloud.user.uid), JSON.stringify([...set])); }catch(e){} }
+let wlBusy=false, wlAgain=false;
+async function syncCounts(){
+  if(!cloud.user || !cloud.ready || !cloud.fb?.store) return;
+  if(wlBusy){ wlAgain=true; return; } wlBusy=true;
+  try{
+    const {doc,setDoc,deleteDoc} = cloud.fb, uid=cloud.user.uid, mine=wlMine();
+    const want = new Set(db.movies.filter(m=>isOfficial(m) && m.status==='want').map(wlSlug).filter(Boolean));
+    for(const f of want) if(!mine.has(f)){ try{ await setDoc(doc(cloud.fb.store,'counts',f,'by',uid),{}); mine.add(f); wlCount.delete(f); }catch(e){ console.warn('count', e.code||e); break; } }
+    for(const f of [...mine]) if(!want.has(f)){ try{ await deleteDoc(doc(cloud.fb.store,'counts',f,'by',uid)); mine.delete(f); wlCount.delete(f); }catch(e){ console.warn('count', e.code||e); break; } }
+    wlKeep(mine);
+  } finally { wlBusy=false; if(wlAgain){ wlAgain=false; syncCounts(); } }
+}
+const wlCount = new Map();   // film → {n, mine} as read from the server
+async function readCount(f){
+  if(wlCount.has(f)) return wlCount.get(f);
+  const mine = cloud.user ? wlMine().has(f) : false;
+  const r = await fetch(`https://firestore.googleapis.com/v1/projects/${FB_CFG.projectId}/databases/(default)/documents/counts/${encodeURIComponent(f)}:runAggregationQuery?key=${FB_CFG.apiKey}`,
+    {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({structuredAggregationQuery:{structuredQuery:{from:[{collectionId:'by'}]}, aggregations:[{alias:'n',count:{}}]}})});
+  if(!r.ok) throw new Error('count '+r.status);
+  const j = await r.json(), n = +(j?.[0]?.result?.aggregateFields?.n?.integerValue||0);
+  const v = {n, mine}; wlCount.set(f, v); return v;
+}
+function countText(m, v){
+  const me = !!cloud.user && m.status==='want';
+  const others = Math.max(0, v.n - (v.mine?1:0));
+  if(me) return others ? `You and ${others} other${others>1?'s':''} want to see this` : '';
+  return others ? `${others} ${others>1?'people want':'person wants'} to see this` : '';
+}
+function fillCount(m){
+  const f = wlSlug(m); if(!f || !isOfficial(m)) return;
+  readCount(f).then(v=>{ const el=document.querySelector(`.wlc[data-f="${f}"]`); if(!el) return; const t=countText(m,v); el.hidden=!t;
+    el.innerHTML = t ? `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.8c1.7.8 2.7 2.5 3 5.2"/></svg>${t}` : ''; }).catch(()=>{});
+}
+
 let cloudP=null, storeP=null;
 function cloudInit(){
   return cloudP ||= (async()=>{ try{

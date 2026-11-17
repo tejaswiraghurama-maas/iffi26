@@ -245,7 +245,7 @@ body:has(#sheet.picker.open) #sheetScrim{background:rgba(0,0,0,.3)}
 .dposter{width:120px;flex:none}
 .dinfo{flex:1;min-width:0}
 .dinfo h2{margin:0 0 4px;font-size:24px;line-height:1.2}
-.dmeta{color:var(--muted);font-size:15.5px;line-height:1.4;margin-top:2px}.dmeta b{color:var(--text);font-weight:600}
+.dmeta{color:var(--muted);font-size:15.5px;line-height:1.4;margin-top:2px}.wlc{display:flex;align-items:center;gap:6px;margin-top:6px}.wlc[hidden]{display:none}.dmeta b{color:var(--text);font-weight:600}
 .dsign{display:flex!important;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:14px 0 0;font-size:15.5px}
 body:not(.guest) .dsign{display:none!important}
 .statusbar{margin:14px 0 4px}
