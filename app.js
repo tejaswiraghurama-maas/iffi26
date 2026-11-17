@@ -72,10 +72,10 @@ function setView(v, fromRoute){ const ch=state.view!==v; state.view=v; persistUI
 /* ---------- URLs ----------
    ./               Discover        film/<slug>/   a film (opens over the current page)
    schedule/        Schedule        venue/<id>/    a venue
-   my-list/         My list                                                      */
+   my-list/         My Watchlist                                                      */
 const ROOT = document.baseURI.replace(/[?#].*$/,'').replace(/[^/]*$/,'');
 const VIEW_PATH = {all:'', schedule:'schedule/', mine:'my-list/'};
-const VIEW_NAME = {all:'', schedule:'Schedule', mine:'My list'};
+const VIEW_NAME = {all:'', schedule:'Schedule', mine:'Watchlist'};
 const SITE = 'Festival Diaries · Goa';
 const filmURL = m => ROOT+'film/'+slug(m.title)+'/';
 const venueURL = v => ROOT+'venue/'+v.id+'/';
@@ -325,7 +325,7 @@ function renderSchedule(){
   if(!state.smode) state.smode = (cloud.user && myUp) ? 'plan' : 'time';
   const mode = state.smode;
   const tab = (k,l,extra='') => `<button role="tab" aria-selected="${mode===k}" class="${mode===k?'on':''}" onclick="state.smode='${k}';window.scrollTo(0,0);render()">${l}${extra}</button>`;
-  const seg = `<div class="mseg sseg" role="tablist">${tab('plan','My plan', myUp?`<small>${myUp}</small>`:'')}${tab('time','All shows')}${tab('venue','By venue')}</div>`;
+  const seg = `<div class="mseg sseg" role="tablist">${tab('plan','My Plan', myUp?`<small>${myUp}</small>`:'')}${tab('time','All shows')}${tab('venue','By venue')}</div>`;
   if(mode==='venue') return seg + renderVenues();
   if(mode==='plan') return seg + renderPlan();
   return seg + renderScheduleTime();
@@ -343,7 +343,7 @@ function pickTime(mid, sid){
   if(!cloud.user) return askSignIn(mid, 'want', sid);
   toggleS(mid, sid, 'going');
   const s = find(mid)?.screenings.find(y=>y.id===sid);
-  if(s?.going && !clashes().has(sid)) toast('Added to My plan');
+  if(s?.going && !clashes().has(sid)) toast('Added to My Plan');
 }
 /* one card per film per day, with all its times as buttons */
 function filmGroup(g, cl, n){
@@ -438,7 +438,7 @@ function renderPlan(){
           ${live?'<span class="tag booked">Now showing</span>':''}</div>
         <div class="acts" onclick="event.stopPropagation()">${past
           ? `<button class="btn sm" onclick="quickWatched('${x.m.id}','${x.s.id}')">✓ Watched</button>`
-          : `<button class="icbtn" aria-label="Remove ${esc(x.m.title)} from My plan" title="Remove from My plan" onclick="toggleS('${x.m.id}','${x.s.id}','going');toast('Removed from My plan')">${IC.x}</button>`}</div>
+          : `<button class="icbtn" aria-label="Remove ${esc(x.m.title)} from My Plan" title="Remove from My Plan" onclick="toggleS('${x.m.id}','${x.s.id}','going');toast('Removed from My Plan')">${IC.x}</button>`}</div>
       </div>`;
     }
   }
@@ -459,7 +459,7 @@ function cardHtml(m, badge){
   const sub = m.status==='watched' ? `<span class="stars">${stars(m.rating)}</span>` : (ns ? `<span>${fmtShort(ns.start)+' '+fmtTime(ns.start)}</span>` : '');
   const b = badge || (m.status==='watched' ? '<span style="color:var(--green)">✓ Watched</span>' : '');
   return `<div class="card" data-pid="${m.id}" tabindex="0" role="button" aria-label="${esc(m.title)}" onclick="openDetail('${m.id}')">
-    ${poster(m).replace(/<\/div>$/, (m.status!=='watched' ? `<button class="bm ${m.status==='want'?'on':''}" aria-label="${m.status==='want'?'Remove from my list':'Save to my list'}" onclick="event.stopPropagation();quickSave('${m.id}')"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4.5L6 21z" stroke-linejoin="round"/></svg></button>` : '') + '</div>')}
+    ${poster(m).replace(/<\/div>$/, (m.status!=='watched' ? `<button class="bm ${m.status==='want'?'on':''}" aria-label="${m.status==='want'?'Remove from my watchlist':'Save to my watchlist'}" onclick="event.stopPropagation();quickSave('${m.id}')"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4.5L6 21z" stroke-linejoin="round"/></svg></button>` : '') + '</div>')}
     ${b?`<span class="badge-next">${b}</span>`:''}
     <div class="cap">${esc(m.title)}</div>
     <div class="sub">${sub}</div>
@@ -507,8 +507,8 @@ async function shareWatchlist(){
   const url = listURL(films), title = listTitle(firstName()), text = `${title} – ${films.length} film${films.length>1?'s':''} for IFFI Goa 2026 🎬`;
   if(navigator.share && matchMedia('(pointer: coarse)').matches){ try{ await navigator.share({title, text, url}); }catch(e){} return; }
   const wa = 'https://wa.me/?text='+encodeURIComponent(text+'\n'+url);
-  openModal(`<div class="sharedlg"><h2>Share your list</h2><p>Anyone with this link can see “${esc(title)}” – your first name and ${films.length} film${films.length>1?'s':''}. Share again after you change your list.</p>
-    <div class="shr-link"><input readonly value="${esc(url)}" onclick="this.select()" aria-label="Link to your list"><button class="icbtn" onclick="copyText('${esc(url)}')" aria-label="Copy link" title="Copy link">${IC.copy}</button></div>
+  openModal(`<div class="sharedlg"><h2>Share your watchlist</h2><p>Anyone with this link can see “${esc(title)}” – your first name and ${films.length} film${films.length>1?'s':''}. Share again after you change your watchlist.</p>
+    <div class="shr-link"><input readonly value="${esc(url)}" onclick="this.select()" aria-label="Link to your watchlist"><button class="icbtn" onclick="copyText('${esc(url)}')" aria-label="Copy link" title="Copy link">${IC.copy}</button></div>
     <div class="shr-opts">
       <button onclick="copyText('${esc(url)}')"><span class="ico">${IC.link}</span>Copy link</button>
       <a href="${esc(wa)}" target="_blank" rel="noopener"><span class="ico wa">${IC.wa}</span>WhatsApp</a>
@@ -531,17 +531,17 @@ function openSharedList(code, by){
   const all = films.every(m=>m.status==='want'||m.status==='watched');
   openModal(`<div class="slist"><h2>${esc(listTitle(by))}</h2><p class="upd">${films.length} film${films.length>1?'s':''} for IFFI Goa 2026 · shared from Festival Diaries · Goa</p>
     <div class="srows">${rows}</div>
-    <div class="pact">${all ? '<span class="done">✓ All in your list</span>' : `<button class="pillbtn on" onclick="saveSharedList('${esc(code)}','${esc(cleanName(by)).replace(/'/g,'&#39;')}')">${IC.bookmark}Save all</button>`}<button class="linkbtn more" onclick="closeModal()">Browse all films →</button></div></div>`, ROOT+'list/?f='+encodeURIComponent(code).replace(/%2E/gi,'.')+(cleanName(by)?'&n='+encodeURIComponent(cleanName(by)):''));
+    <div class="pact">${all ? '<span class="done">✓ All in your watchlist</span>' : `<button class="pillbtn on" onclick="saveSharedList('${esc(code)}','${esc(cleanName(by)).replace(/'/g,'&#39;')}')">${IC.bookmark}Save all</button>`}<button class="linkbtn more" onclick="closeModal()">Browse all films →</button></div></div>`, ROOT+'list/?f='+encodeURIComponent(code).replace(/%2E/gi,'.')+(cleanName(by)?'&n='+encodeURIComponent(cleanName(by)):''));
   document.title = listTitle(by)+' · '+SITE;
 }
 function saveSharedList(code, by){
   const films = sharedFilms(code);
   if(!cloud.user){ cloud.pendingList = [code, by]; return askSignIn(); }
   let k=0; for(const m of films) if(m.status!=='want' && m.status!=='watched'){ m.status='want'; k++; }
-  save(); render(); openSharedList(code, by); toast(k ? `Saved ${k} film${k>1?'s':''} to My list` : 'Already in your list');
+  save(); render(); openSharedList(code, by); toast(k ? `Saved ${k} film${k>1?'s':''} to My Watchlist` : 'Already in your watchlist');
 }
 function renderMine(){
-  if(!cloud.user) return `<div class="empty ask" style="max-width:420px;margin:30px auto"><h2>Your list lives here</h2><p>Sign in with Google to save films and keep track of what you’ve watched – on any device.</p><button class="btn primary" onclick="cloudToggle()">Continue with Google</button>${CONSENT_NOTE}</div>`;
+  if(!cloud.user) return `<div class="empty ask" style="max-width:420px;margin:30px auto"><h2>Your watchlist lives here</h2><p>Sign in with Google to save films and keep track of what you’ve watched – on any device.</p><button class="btn primary" onclick="cloudToggle()">Continue with Google</button>${CONSENT_NOTE}</div>`;
   const nw = db.movies.filter(m=>m.status==='want').length, nd = db.movies.filter(m=>m.status==='watched').length;
   const t = state.mineTab==='watched' ? 'watched' : 'want';
   return `<div class="mseg" role="tablist"><button role="tab" aria-selected="${t==='want'}" class="${t==='want'?'on':''}" onclick="state.mineTab='want';persistUI();render()">To watch<small>${nw}</small></button><button role="tab" aria-selected="${t==='watched'}" class="${t==='watched'?'on':''}" onclick="state.mineTab='watched';persistUI();render()">Watched<small>${nd}</small></button></div>` + (t==='want' && nw ? `<div class="sharebar"><span>${nw} film${nw>1?'s':''} you want to see</span><button class="pillbtn" onclick="shareWatchlist()">${IC.share}Share</button></div>` : '') + renderGrid(t);
@@ -636,10 +636,10 @@ function setStatus(mid,st){
 }
 function setRating(mid,r){ if(!cloud.user) return askSignIn(mid,'watched'); const m=find(mid); m.rating = m.rating===r ? 0 : r; if(m.status!=='watched'){ m.status='watched'; m.watchedOn=m.watchedOn||localISO();} save(); render(); openDetail(mid); }
 function toggleLike(mid){ const m=find(mid); m.liked=!m.liked; save(); render(); openDetail(mid); }
-function quickSave(mid){ if(!cloud.user) return askSignIn(mid,'want'); const m=find(mid); if(!m) return; m.status = m.status==='want' ? 'none' : 'want'; save(); render(); toast(m.status==='want'?'Saved to My list':'Removed from My list'); }
+function quickSave(mid){ if(!cloud.user) return askSignIn(mid,'want'); const m=find(mid); if(!m) return; m.status = m.status==='want' ? 'none' : 'want'; save(); render(); toast(m.status==='want'?'Saved to My Watchlist':'Removed from My Watchlist'); }
 function askSignIn(mid,st,sid){
   const m=find(mid), back=$('#scrim').classList.contains('open'); const sc=sid&&m?.screenings.find(y=>y.id===sid); cloud.pending = m ? {t:m.title.toLowerCase(), st, sk:sc?skey(sc):''} : null;
-  openModal(`<div class="ask"><h2>${st==='watched'?'Keep track of what you watch':m?'Save films to your list':'Sign in to save your list'}</h2><p>Sign in with Google so your list is saved to your account and works on all your devices.</p><button class="btn primary" onclick="cloudToggle()">Continue with Google</button><button class="btn" onclick="${m&&back?`openDetail('${m.id}')`:'closeModal()'}">Not now</button>${CONSENT_NOTE}</div>`);
+  openModal(`<div class="ask"><h2>${st==='watched'?'Keep track of what you watch':m?'Save films to your watchlist':'Sign in to save your watchlist'}</h2><p>Sign in with Google so your watchlist is saved to your account and works on all your devices.</p><button class="btn primary" onclick="cloudToggle()">Continue with Google</button><button class="btn" onclick="${m&&back?`openDetail('${m.id}')`:'closeModal()'}">Not now</button>${CONSENT_NOTE}</div>`);
 }
 const slug = t => String(t||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 const ytUrl = m => 'https://www.youtube.com/results?search_query=' + encodeURIComponent(`${m.title} ${m.director||''} trailer`.replace(/\s+/g,' '));
@@ -708,7 +708,7 @@ function openDetail(id){
     ? `<div class="myrate"><span>✓ You’ve seen this</span><div class="rate">${starsHtml}</div><button class="linkbtn" onclick="setStatus('${m.id}','watched')">Undo</button></div>`
     : `${going
       ? `<button class="pbtn going" onclick="document.getElementById('dshows')?.scrollIntoView({behavior:'smooth',block:'start'})">${I('<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>')}<span><b>Going</b> · ${fmtShort(dt(going))} · ${fmtTime(dt(going))}${going.venue?' · '+esc(going.venue):''}</span></button>`
-      : `<button class="pbtn ${m.status==='want'?'on':''}" aria-pressed="${m.status==='want'}" onclick="setStatus('${m.id}','want')">${I(m.status==='want'?'<path d="M5 12.5l4.5 4.5L19 7.5"/>':'<path d="M6.5 3.5h11v17l-5.5-4-5.5 4z"/>')}<span>${m.status==='want'?'On my list':'Want to see'}</span></button>`}
+      : `<button class="pbtn ${m.status==='want'?'on':''}" aria-pressed="${m.status==='want'}" onclick="setStatus('${m.id}','want')">${I(m.status==='want'?'<path d="M5 12.5l4.5 4.5L19 7.5"/>':'<path d="M6.5 3.5h11v17l-5.5-4-5.5 4z"/>')}<span>${m.status==='want'?'In my watchlist':'Want to see'}</span></button>`}
       <div class="seenrow"><button class="linkbtn" onclick="setStatus('${m.id}','watched')">Already seen it?</button></div>`}
   ${m.synopsis||extra?`<div class="dsyn"><p class="syn clamp">${esc(m.synopsis||'')}</p><div class="dextra" hidden>${extra}</div><button class="linkbtn rmore" onclick="const d=this.parentNode;const o=d.classList.toggle('open');d.querySelector('.dextra').hidden=!o;this.textContent=o?'Show less':'Read more'">Read more</button></div>`:''}
   ${ratingsBlock(m)}
@@ -986,7 +986,7 @@ function privacyHtml(){
 <h3>How long we keep it</h3>
 <p>Until you delete your account. If we ever close the site, we’ll delete all accounts.</p>
 <h3>Your rights</h3>
-<ul><li><b>See and correct</b> your data any time in My list.</li>
+<ul><li><b>See and correct</b> your data any time in My Watchlist.</li>
 <li><b>Get a copy of your data:</b> use <b>Download my data</b> under Account &amp; data in the account menu (your photo, top right).</li>
 <li><b>Withdraw consent and delete everything:</b> use <b>Delete my account</b> under Account &amp; data. Your name, email and lists are erased immediately. Signing out alone keeps your lists saved.</li>
 <li><b>Questions or complaints:</b> write to ${mail}. We’ll reply within 30 days. If you’re not satisfied, you can complain to the Data Protection Board of India.</li></ul>
@@ -1030,7 +1030,7 @@ function openPrivacy(){ $('#menu').classList.remove('open'); openModal(privacyHt
 function askConsent(){
   openModal(`<div class="ask"><h2>We’ve added a privacy notice</h2><p>Your name, email and film lists are saved to your account so they sync across devices. Nothing else is collected.</p><button class="btn primary" onclick="agreeConsent()">OK, keep syncing</button><button class="btn" onclick="openPrivacy()">Read the notice</button><button class="btn danger" onclick="deleteAccount()">Delete my account</button></div>`);
 }
-function agreeConsent(){ cloud.consent={v:PRIVACY_V, at:Date.now()}; pushNow(); closeModal(); toast('Thanks – your list stays synced'); }
+function agreeConsent(){ cloud.consent={v:PRIVACY_V, at:Date.now()}; pushNow(); closeModal(); toast('Thanks – your watchlist stays synced'); }
 async function deleteAccount(){
   $('#menu').classList.remove('open');
   if(!cloud.user || !cloud.fb) return;
@@ -1127,8 +1127,8 @@ async function onUser(u){
     cloud.unsub = onSnapshot(ref, s=>{ if(!s.metadata.hasPendingWrites && s.exists()) applyRemote(s.data()); });
     const pd = cloud.pending; cloud.pending = null;
     const pm = pd && db.movies.find(m=>m.title.toLowerCase()===pd.t);
-    if(pm){ pm.status = pd.st; if(pd.st==='watched' && !pm.watchedOn) pm.watchedOn = localISO(); const ps = pd.sk && pm.screenings.find(y=>skey(y)===pd.sk); if(ps) ps.going=true; save(); render(); if(ps){ if($('#scrim').classList.contains('open')) closeModal(); toast('Signed in – added to My plan'); } else { openDetail(pm.id); toast(pd.st==='want'?'Signed in – saved to My list':'Signed in – marked as watched'); } }
-    else if(cloud.agreed){ if($('#scrim').classList.contains('open') && $('#modal .ask')) closeModal(); toast('Signed in – your list is saved online'); }
+    if(pm){ pm.status = pd.st; if(pd.st==='watched' && !pm.watchedOn) pm.watchedOn = localISO(); const ps = pd.sk && pm.screenings.find(y=>skey(y)===pd.sk); if(ps) ps.going=true; save(); render(); if(ps){ if($('#scrim').classList.contains('open')) closeModal(); toast('Signed in – added to My Plan'); } else { openDetail(pm.id); toast(pd.st==='want'?'Signed in – saved to My Watchlist':'Signed in – marked as watched'); } }
+    else if(cloud.agreed){ if($('#scrim').classList.contains('open') && $('#modal .ask')) closeModal(); toast('Signed in – your watchlist is saved online'); }
     if(cloud.pendingList){ const [c,b]=cloud.pendingList; cloud.pendingList=null; saveSharedList(c,b); }
     if(!cloud.consent) askConsent();   // signed in before the privacy notice existed
   }catch(e){ console.warn(e); toast('Could not reach online storage'); }
