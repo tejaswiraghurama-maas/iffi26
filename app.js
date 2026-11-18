@@ -374,13 +374,14 @@ function renderSchedule(){
   return seg + renderScheduleTime();
 }
 /* a time button: tap to mark / unmark Going */
-function timeChip(x, cl, n){
+function timeChip(x, cl, n, withDate){
   const live = x.start<=n && x.end>n, past = x.end<=n;
   const v = venueOf(x.s.venue), place = [v?.name || x.s.venue || 'Venue TBA', x.s.screen].filter(Boolean).join(' · ');
   const cls = ['tchip', x.s.going&&'going', cl.has(x.s.id)&&'clash', live&&'live', past&&'past'].filter(Boolean).join(' ');
-  const lab = `${fmtTime(x.start)}, ${place}${x.s.going?', going – tap to remove':', tap to mark as going'}`;
+  const when = (withDate ? fmtShort(x.start)+' · ' : '') + fmtTime(x.start);
+  const lab = `${when}, ${place}${x.s.going?', going – tap to remove':', tap to mark as going'}`;
   const act = past ? (x.m.status==='watched' ? `openDetail('${x.m.id}')` : `quickWatched('${x.m.id}','${x.s.id}')`) : `pickTime('${x.m.id}','${x.s.id}')`;
-  return `<button class="${cls}" aria-pressed="${!!x.s.going}" aria-label="${esc(lab)}" onclick="event.stopPropagation();${act}"><b>${fmtTime(x.start)}</b><span>${esc(place)}</span>${x.s.going?'<i>✓ Going</i>':live?'<i>Now showing</i>':past&&x.m.status!=='watched'?'<i>Mark watched</i>':cl.has(x.s.id)?'<i>Clash</i>':''}</button>`;
+  return `<button class="${cls}" aria-pressed="${!!x.s.going}" aria-label="${esc(lab)}" onclick="event.stopPropagation();${act}">${withDate?`<small class="tdate">${fmtShort(x.start)}</small>`:''}<b>${fmtTime(x.start)}</b><span>${esc(place)}</span>${x.s.going?'<i>✓ Going</i>':live?'<i>Now showing</i>':past&&x.m.status!=='watched'?'<i>Mark watched</i>':cl.has(x.s.id)?'<i>Clash</i>':''}</button>`;
 }
 function pickTime(mid, sid){
   if(!cloud.user) return askSignIn(mid, 'want', sid);
@@ -389,7 +390,7 @@ function pickTime(mid, sid){
   if(s?.going && !clashes().has(sid)) toast('Added to My Plan');
 }
 /* one card per film per day, with all its times as buttons */
-function filmGroup(g, cl, n){
+function filmGroup(g, cl, n, withDate){
   const m = g.m, going = g.items.some(x=>x.s.going);
   const notes = [...new Set(g.items.map(x=>x.s.note).filter(Boolean))];
   const meta = [runtime(m)+' min', m.language, m.section].filter(Boolean).map(esc).join(' · ');
@@ -400,7 +401,7 @@ function filmGroup(g, cl, n){
       <div class="info"><div class="t">${esc(m.title)}</div><div class="meta">${meta}</div>${tags?`<div class="fg-tags">${tags}</div>`:''}</div>
     </div>
     ${notes.map(t=>`<div class="snote">${esc(t)}</div>`).join('')}
-    <div class="tchips">${g.items.map(x=>timeChip(x,cl,n)).join('')}</div>
+    <div class="tchips">${g.items.map(x=>timeChip(x,cl,n,withDate)).join('')}</div>
   </div>`;
 }
 function dayChipsHtml(days, today){
@@ -492,7 +493,7 @@ function renderPlan(){
     .filter(g => g.items.length).sort((a,b)=>a.items[0].start-b.items[0].start);
   if(pick.length){
     html += `<h2 class="day sub"><span>Saved films – pick a showtime</span><span>${pick.length}</span></h2>`;
-    for(const g of pick) html += filmGroup({m:g.m, items:g.items}, cl, n);
+    for(const g of pick) html += filmGroup({m:g.m, items:g.items}, cl, n, true);
   }
   return html;
 }
@@ -919,7 +920,7 @@ function quickSave(mid){ if(!cloud.user) return askSignIn(mid,'want'); const m=f
 function askSignIn(mid,st,sid){
   cloudInit();
   const m=find(mid), back=$('#scrim').classList.contains('open'); const sc=sid&&m?.screenings.find(y=>y.id===sid); cloud.pending = m ? {t:m.title.toLowerCase(), st, sk:sc?skey(sc):''} : null;
-  openModal(`<div class="ask"><h2>${st==='watched'?'Keep track of what you watch':m?'Save films to your watchlist':'Sign in to save your watchlist'}</h2><p>Sign in with Google so your watchlist is saved to your account and works on all your devices.</p><p class="gnote">Google’s window will say <b>iffi26-8579d.firebaseapp.com</b> – that’s the secure Google Firebase service this site uses for sign-in.</p><button class="btn primary" onclick="cloudToggle()">Continue with Google</button><button class="btn" onclick="${m&&back?`openDetail('${m.id}')`:'closeModal()'}">Not now</button>${CONSENT_NOTE}</div>`);
+  openModal(`<div class="ask"><h2>${st==='watched'?'Keep track of what you watch':m?'Save films to your watchlist':'Sign in to save your watchlist'}</h2><p>Sign in with Google so your watchlist is saved to your account and works on all your devices.</p><button class="btn primary" onclick="cloudToggle()">Continue with Google</button><button class="btn" onclick="${m&&back?`openDetail('${m.id}')`:'closeModal()'}">Not now</button>${CONSENT_NOTE}</div>`);
 }
 const slug = t => String(t||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 const ytUrl = m => 'https://www.youtube.com/results?search_query=' + encodeURIComponent(`${m.title} ${m.director||''} trailer`.replace(/\s+/g,' '));
