@@ -125,7 +125,7 @@ function routeOf(href){
   if((r=p.match(/^film\/([^/]+)\/?$/))) return {film:decodeURIComponent(r[1])};
   if((r=p.match(/^venue\/([^/]+)\/?$/))) return {venue:decodeURIComponent(r[1])};
   if(/^privacy\/?$/.test(p)) return {privacy:true};
-  if(/^play\/?$/.test(p)) return {play:true};
+  if(/^play\/?$/.test(p)){ const q=(href.split('?')[1]||'').split('#')[0]; return {play:true, by:new URLSearchParams(q).get('by')||''}; }
   if(/^list\/?$/.test(p)){ const q=(href.split('?')[1]||'').split('#')[0]; const sp=new URLSearchParams(q); return {list:sp.get('f')||'', by:sp.get('n')||''}; }
   if(/^schedule\/?$/.test(p)) return {view:'schedule'};
   if(/^my-list\/?$/.test(p)) return {view:'mine'};
@@ -140,7 +140,7 @@ function openRoute(r){
   if(r.film){ const m=db.movies.find(x=>slug(x.title)===r.film); if(m){ openDetail(m.id); return true; } }
   if(r.venue && venueById(r.venue)){ openVenue(r.venue); return true; }
   if(r.privacy){ openPrivacy(); return true; }
-  if(r.play){ openTaste(!!tgLoad()); return true; }
+  if(r.play){ if(tgLoad()) openTaste(true); else openTaste(false, r.by); return true; }
   if(r.list!==undefined){ openSharedList(r.list, r.by); return true; }
   return false;
 }
@@ -514,7 +514,7 @@ function renderGrid(kind){
   let list = db.movies.filter(m => (kind==='all' ? fOK(m) : m.status===kind) && matches(m));
   if(kind==='watched') list.sort((a,b)=>(b.watchedOn||'').localeCompare(a.watchedOn||'') || byTitle(a,b));
   else list.sort(kind==='want' && hasShows() ? byNext : byTitle);
-  let html = kind==='all' ? filterBar() + (filtering ? '' : tasteBanner()) : '';
+  let html = kind==='all' ? (filtering ? '' : tasteBanner()) + filterBar() + (filtering ? '' : tasteReady()) : '';
   if(!list.length){
     if(state.now) return html + `<div class="empty"><h3>Nothing screening right now</h3>No shows are on or starting in the next 2 hours.</div>`;
     if(filtering) return html + `<div class="empty"><h3>No films match</h3>Try another search or filter.</div>`;
@@ -657,33 +657,29 @@ addEventListener('scroll', ()=>{ const f=document.querySelector('.filters'); doc
    Every visitor sees the same pairs in the same order. Each pick only nudges a few taste "dials" a little;
    recommendations lean towards the palette and are mixed across countries and tracks – never a strict match. */
 const TG_PAIRS = [
-  {a:['Drive My Car',2021,'Ryusuke Hamaguchi','drive-my-car','A grieving actor and his quiet driver find words on long drives'], b:['Mad Max: Fury Road',2015,'George Miller','mad-max-fury-road','Two hours of desert chase, fire and chrome'], v:{pace:1}},
-  {a:['Oldboy',2003,'Park Chan-wook','oldboy','Locked up for 15 years, then set loose to find out why'], b:['Amélie',2001,'Jean-Pierre Jeunet','amelie','A shy Paris waitress secretly fixes strangers’ lives'], v:{tone:1, thrill:.4}},
+  {a:['Lost in Translation',2003,'Sofia Coppola','lost-in-translation','Two lonely Americans drift through Tokyo at night'], b:['Mad Max: Fury Road',2015,'George Miller','mad-max-fury-road','Two hours of desert chase, fire and chrome'], v:{pace:1}},
+  {a:['Joker',2019,'Todd Phillips','joker','A failed comedian slides into violence in a crumbling city'], b:['Amélie',2001,'Jean-Pierre Jeunet','amelie','A shy Paris waitress secretly fixes strangers’ lives'], v:{tone:1, thrill:.4}},
   {a:['Free Solo',2018,'E. Chai Vasarhelyi, Jimmy Chin','free-solo','A climber scales El Capitan with no ropes – for real'], b:['Life of Pi',2012,'Ang Lee','life-of-pi','A boy, a lifeboat and a Bengal tiger, lost at sea'], v:{real:1, fantasy:-.5}},
-  {a:['Pather Panchali',1955,'Satyajit Ray','pather-panchali','A poor family’s life in a Bengal village, through a boy’s eyes'], b:['Bicycle Thieves',1948,'Vittorio De Sica','bicycle-thieves','A father and son search Rome for his stolen bicycle'], v:{india:1, europe:-1}, both:{era:.3}, rel:{b:['Vittorio De Sica - Staging Life','this documentary is about its director']}},
-  {a:['Shoplifters',2018,'Hirokazu Kore-eda','shoplifters','A makeshift family of petty thieves takes in a little girl'], b:['Roma',2018,'Alfonso Cuarón','roma','A year in the life of a housekeeper in 1970s Mexico City'], v:{asia:1, latam:-1}, both:{family:.3}},
+  {a:['The Grand Budapest Hotel',2014,'Wes Anderson','the-grand-budapest-hotel','A hotel concierge and his lobby boy on a madcap caper'], b:['Schindler’s List',1993,'Steven Spielberg','schindler-s-list','A businessman saves over a thousand Jews in the Holocaust'], v:{humour:1, tone:-.3}, both:{history:.3}},
+  {a:['RRR',2022,'S. S. Rajamouli','rrr','Two revolutionaries, one friendship, giant action set pieces'], b:['Birdman',2014,'Alejandro G. Iñárritu','birdman','A faded superhero actor stages a Broadway comeback'], v:{access:1, pace:-.3}},
+  {a:['Boyhood',2014,'Richard Linklater','boyhood','One boy growing up, filmed over 12 real years'], b:['Rang De Basanti',2006,'Rakeysh Omprakash Mehra','rang-de-basanti','Carefree students wake up to politics and protest'], v:{focus:1}},
   {a:['Everything Everywhere All at Once',2022,'Daniel Kwan, Daniel Scheinert','everything-everywhere-all-at-once','A laundromat owner battles across the multiverse – and her tax audit'], b:['12 Angry Men',1957,'Sidney Lumet','12-angry-men','One juror holds out, in one hot room'], v:{style:1, era:-.5}},
-  {a:['The Grand Budapest Hotel',2014,'Wes Anderson','the-grand-budapest-hotel','A hotel concierge and his lobby boy on a madcap caper'], b:['Manchester by the Sea',2016,'Kenneth Lonergan','manchester-by-the-sea','A man comes home to care for his nephew after a death'], v:{humour:1}},
-  {a:['RRR',2022,'S. S. Rajamouli','rrr','Two revolutionaries, one friendship, giant action set pieces'], b:['Tár',2022,'Todd Field','tar','A star conductor at the peak of her power begins to fall'], v:{access:1, pace:-.3}},
-  {a:['Aftersun',2022,'Charlotte Wells','aftersun','A daughter remembers a holiday with her young father'], b:['The Battle of Algiers',1966,'Gillo Pontecorvo','the-battle-of-algiers','Algeria’s fight for independence, filmed like a newsreel'], v:{focus:1}},
   {a:['Lawrence of Arabia',1962,'David Lean','lawrence-of-arabia','A British officer in the Arab revolt – nearly four hours of desert'], b:['Whiplash',2014,'Damien Chazelle','whiplash','A young drummer and a brutal teacher, in 106 tense minutes'], v:{length:1}, rel:{a:['Maverick: The Epic Adventures of David Lean','this documentary is about its director']}},
-  {a:['Lagaan',2001,'Ashutosh Gowariker','lagaan','Villagers bet their taxes on a cricket match against the British'], b:['The Lunchbox',2013,'Ritesh Batra','the-lunchbox','A mixed-up lunch delivery sparks letters between two strangers'], v:{access:.7}, both:{india:.4}, rel:{a:['Lagaan','it’s screening at the festival']}},
-  {a:['Get Out',2017,'Jordan Peele','get-out','Meeting the girlfriend’s parents turns into a nightmare'], b:['Moonlight',2016,'Barry Jenkins','moonlight','Three chapters in the life of a young man in Miami'], v:{thrill:1}},
-  // — refine: 12 more —
-  {a:['Schindler’s List',1993,'Steven Spielberg','schindler-s-list','A businessman saves over a thousand Jews in the Holocaust'], b:['Jojo Rabbit',2019,'Taika Waititi','jojo-rabbit','A Hitler Youth boy discovers a secret in his attic'], v:{humour:-1, tone:.4}, both:{history:.6}},
-  {a:['Arrival',2016,'Denis Villeneuve','arrival','A linguist tries to talk with visitors from space'], b:['Nomadland',2020,'Chloé Zhao','nomadland','A widow lives on the road in her van across the American West'], v:{fantasy:1}, both:{pace:.3}},
+  {a:['Get Out',2017,'Jordan Peele','get-out','Meeting the girlfriend’s parents turns into a nightmare'], b:['The Lunchbox',2013,'Ritesh Batra','the-lunchbox','A mixed-up lunch delivery sparks letters between two strangers'], v:{thrill:1, pace:-.3}},
+  {a:['Interstellar',2014,'Christopher Nolan','interstellar','Astronauts search for a new home for humanity'], b:['The Social Network',2010,'David Fincher','the-social-network','The messy true story of how Facebook began'], v:{fantasy:1}},
+  // — 10 more, if they want to keep playing —
+  {a:['Pather Panchali',1955,'Satyajit Ray','pather-panchali','A poor family’s life in a Bengal village, through a boy’s eyes'], b:['Bicycle Thieves',1948,'Vittorio De Sica','bicycle-thieves','A father and son search Rome for his stolen bicycle'], v:{india:1, europe:-1}, both:{era:.3}, rel:{b:['Vittorio De Sica - Staging Life','this documentary is about its director']}},
+  {a:['Casablanca',1942,'Michael Curtiz','casablanca','Old flames meet again in a wartime nightclub'], b:['La La Land',2016,'Damien Chazelle','la-la-land','An actor and a jazz pianist chase dreams in Los Angeles'], v:{era:1}, both:{romance:.3}},
   {a:['Spirited Away',2001,'Hayao Miyazaki','spirited-away','A girl is trapped in a bathhouse for spirits'], b:['Pan’s Labyrinth',2006,'Guillermo del Toro','pan-s-labyrinth','A girl escapes wartime Spain into a dark fairy tale'], v:{anim:1}, both:{fantasy:.5}},
-  {a:['A Separation',2011,'Asghar Farhadi','a-separation','A divorce in Tehran spirals into a moral maze'], b:['Anatomy of a Fall',2023,'Justine Triet','anatomy-of-a-fall','A writer stands trial over her husband’s death'], v:{mideast:1, europe:-1}},
-  {a:['Kumbalangi Nights',2019,'Madhu C. Narayanan','kumbalangi-nights','Four brothers in a Kerala fishing village learn to be a family'], b:['Gangs of Wasseypur',2012,'Anurag Kashyap','gangs-of-wasseypur','Decades of coal-mafia feuds in Jharkhand'], v:{tone:-1, thrill:-.4}, both:{india:.4}},
-  {a:['2001: A Space Odyssey',1968,'Stanley Kubrick','2001-a-space-odyssey','From apes to Jupiter, told mostly in images'], b:['Before Sunrise',1995,'Richard Linklater','before-sunrise','Two strangers talk all night, walking through Vienna'], v:{style:.7, romance:-.5}},
-  {a:['Memories of Murder',2003,'Bong Joon-ho','memories-of-murder','Two detectives chase a serial killer in 1980s rural Korea'], b:['The Shawshank Redemption',1994,'Frank Darabont','the-shawshank-redemption','Hope and friendship over two decades in prison'], v:{access:-.7, tone:.3}},
-  {a:['Tokyo Story',1953,'Yasujirō Ozu','tokyo-story','Elderly parents visit their busy grown-up children'], b:['Past Lives',2023,'Celine Song','past-lives','Childhood sweethearts meet again 24 years later'], v:{era:1}, both:{pace:.3}},
-  {a:['Children of Heaven',1997,'Majid Majidi','children-of-heaven','A brother and sister share one pair of shoes'], b:['Marriage Story',2019,'Noah Baumbach','marriage-story','A couple goes through a painful divorce'], v:{kids:1}},
+  {a:['Lagaan',2001,'Ashutosh Gowariker','lagaan','Villagers bet their taxes on a cricket match against the British'], b:['Masaan',2015,'Neeraj Ghaywan','masaan','Grief, love and caste along the ghats of Varanasi'], v:{access:.7}, both:{india:.4}, rel:{a:['Lagaan','it’s screening at the festival']}},
+  {a:['Taare Zameen Par',2007,'Aamir Khan','taare-zameen-par','An art teacher sees what everyone missed in a struggling boy'], b:['Gangs of Wasseypur',2012,'Anurag Kashyap','gangs-of-wasseypur','Decades of coal-mafia feuds in Jharkhand'], v:{tone:-1, thrill:-.4}, both:{india:.4}},
+  {a:['Inception',2010,'Christopher Nolan','inception','Thieves plant an idea inside a dream – and that ending'], b:['The Shawshank Redemption',1994,'Frank Darabont','the-shawshank-redemption','Hope and friendship over two decades in prison'], v:{access:-.6, style:.4}},
+  {a:['Stand by Me',1986,'Rob Reiner','stand-by-me','Four boys, one summer, a walk to find a body'], b:['Marriage Story',2019,'Noah Baumbach','marriage-story','A couple goes through a painful divorce'], v:{kids:1}},
   {a:['Cinema Paradiso',1988,'Giuseppe Tornatore','cinema-paradiso','A filmmaker remembers his village cinema'], b:['City of God',2002,'Fernando Meirelles, Kátia Lund','city-of-god','Growing up among gangs in Rio’s favelas'], v:{nostalgia:1, tone:-.3}},
-  {a:['Portrait of a Lady on Fire',2019,'Céline Sciamma','portrait-of-a-lady-on-fire','A painter and her subject fall in love in 18th-century France'], b:['Parasite',2019,'Bong Joon-ho','parasite','A poor family schemes its way into a rich family’s home'], v:{romance:1, thrill:-1}},
+  {a:['Titanic',1997,'James Cameron','titanic','A love story aboard the ship that couldn’t sink'], b:['Parasite',2019,'Bong Joon-ho','parasite','A poor family schemes its way into a rich family’s home'], v:{romance:1, thrill:-1}},
   {a:['Little Miss Sunshine',2006,'Jonathan Dayton, Valerie Faris','little-miss-sunshine','A chaotic family road trip to a kids’ pageant'], b:['Cast Away',2000,'Robert Zemeckis','cast-away','One man, alone on a desert island'], v:{family:1, humour:.3}},
 ];
-const TG_CORE = 12;
+const TG_CORE = 10;
 // how each dial is described: [the "+" side, the "−" side]
 const TG_DIAL = {pace:['Slow-burning','Fast-paced'], tone:['Dark','Warm'], real:['Real life','Fiction'], humour:['Funny','Serious'], access:['Crowd-pleasing','Challenging'],
   focus:['Personal','Political'], style:['Bold & unusual','Classic storytelling'], length:['Epic','Tight'], era:['Classics','New films'], thrill:['Genre thrills','Quiet drama'],
@@ -692,8 +688,8 @@ const TG_DIAL = {pace:['Slow-burning','Fast-paced'], tone:['Dark','Warm'], real:
 const TG_REGION = new Set(['india','asia','europe','latam','mideast']);
 const TG_W = d => TG_REGION.has(d) ? .3 : d==='history' ? .6 : 1;   // where a film is from counts for little
 const TG_KEY = 'fd-taste';
-function tgLoad(){ try{ const d=JSON.parse(localStorage.getItem(TG_KEY)||'null'); return d&&Array.isArray(d.p)?d:null; }catch(e){ return null; } }
-function tgStore(p){ try{ localStorage.setItem(TG_KEY, JSON.stringify({v:1, p, at:Date.now()})); }catch(e){} }
+function tgLoad(){ try{ const d=JSON.parse(localStorage.getItem(TG_KEY)||'null'); return d&&d.v===2&&Array.isArray(d.p)?d:null; }catch(e){ return null; } }
+function tgStore(p){ try{ localStorage.setItem(TG_KEY, JSON.stringify({v:2, p, at:Date.now()})); }catch(e){} render(); }
 
 /* the taste palette: each dial is the average nudge it got, softened when it was only asked once or twice */
 function tgPalette(p){
@@ -777,13 +773,24 @@ function tgReason(x, used={}){
 
 /* ---------- game screens ---------- */
 const G = {i:0, p:[], lim:TG_CORE};
+const TG_IC = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="8" height="14" rx="1.5"/><rect x="13.5" y="5" width="8" height="14" rx="1.5"/></svg>';
 const tgImg = f => ROOT+'posters/game/'+f+'.webp';
 function tgPreload(from=0){ TG_PAIRS.slice(from, from+TG_CORE).forEach((P,j)=>setTimeout(()=>{ for(const s of [P.a,P.b]) new Image().src=tgImg(s[3]); }, j*60)); }
-function openTaste(results){
+function openTaste(results, by){
   $('#menu')?.classList.remove('open');
   const saved=tgLoad();
   if(results && saved){ G.p=saved.p.slice(); return tgResults(); }
-  G.i=0; G.p=[]; G.lim=TG_CORE; tgPreload(0); tgStep();
+  G.i=0; G.p=[]; G.lim=TG_CORE; tgPreload(0);
+  if(by!==undefined) return tgIntro(by);
+  tgStep();
+}
+function tgIntro(by){
+  const n = cleanName(by);
+  openModal(`<div class="ask tg-intro"><span class="tg-introic">${TG_IC}</span>
+    <h2>${n?`${esc(n)} invited you to play This or That`:'Play This or That'}</h2>
+    <p>Pick between 10 pairs of well-known films and get a top 10 from IFFI Goa 2026 that suits your taste. Takes about a minute.</p>
+    <button class="btn primary" onclick="tgStep()">Start playing</button>
+    <p class="muted" style="font-size:14px;margin:12px 0 0">Free. Sign in with Google afterwards to save your list.</p></div>`, ROOT+'play/'+(n?'?by='+encodeURIComponent(n):''));
 }
 function tgCard(s, side){
   return `<button class="tg-film" onclick="tgPick('${side}',this)" aria-label="${esc(s[0])} (${s[1]})">
@@ -791,22 +798,43 @@ function tgCard(s, side){
     <b>${esc(s[0])}</b><small>${s[1]} · ${esc(s[2])}</small><span class="tg-hook">${esc(s[4])}</span></button>`;
 }
 function tgStep(){
-  const P=TG_PAIRS[G.i], done=G.i-(G.lim>TG_CORE?TG_CORE:0), tot=G.lim>TG_CORE?TG_PAIRS.length-TG_CORE:TG_CORE;
+  const P=TG_PAIRS[G.i], done=G.i, tot=G.lim;
   openModal(`<div class="tg">
     <div class="tg-top"><div class="tg-bar" role="progressbar" aria-valuemin="0" aria-valuemax="${tot}" aria-valuenow="${done}"><i style="width:${done/tot*100}%"></i></div><span>${done+1} of ${tot}</span></div>
-    <h2 class="tg-q">Which would you rather watch?</h2>
-    <p class="tg-sub">Seen them or not – go with your gut.</p>
+    <h2 class="tg-q">Which is more your kind of film?</h2>
+    <p class="tg-sub">Seen it or just heard of it – pick the one that’s closer to your taste.</p>
     <div class="tg-pair">${tgCard(P.a,'a')}<span class="tg-or">or</span>${tgCard(P.b,'b')}</div>
     <div class="tg-foot"><button class="linkbtn" onclick="tgBack()" ${G.i? '' : 'style="visibility:hidden"'}>‹ Back</button><button class="linkbtn" onclick="tgPick('s')">Can’t choose – skip</button></div>
   </div>`, ROOT+'play/');
 }
 function tgPick(c, el){
   G.p[G.i]=c;
-  const go=()=>{ G.i++; if(G.i>=G.lim){ tgStore(G.p); tgResults(); } else tgStep(); };
+  const go=()=>{ G.i++; if(G.i>=G.lim){ tgStore(G.p); if(G.lim<TG_PAIRS.length) tgHalf(); else tgResults(); } else tgStep(); };
   if(el){ el.classList.add('chosen'); el.parentNode.classList.add('picked'); setTimeout(go, 230); } else go();
 }
-function tgBack(){ if(G.i>(G.lim>TG_CORE?TG_CORE:0)){ G.i--; tgStep(); } }
-function tgMore(){ G.lim=TG_PAIRS.length; G.i=TG_CORE; G.p.length=TG_CORE; tgPreload(TG_CORE); tgStep(); }
+function tgBack(){ if(G.i>0){ G.i--; tgStep(); } }
+function tgMore(){ const s=tgLoad(); if(s && G.p.length<TG_CORE) G.p=s.p.slice(); G.lim=TG_PAIRS.length; G.i=TG_CORE; G.p.length=TG_CORE; tgPreload(TG_CORE); tgStep(); }
+function tgHalf(){
+  const picked=G.p.filter(c=>c==='a'||c==='b').length;
+  openModal(`<div class="ask tg-half"><span class="tg-introic">${TG_IC}</span>
+    <h2>10 down – nice!</h2>
+    <p>${picked>=3?'We know enough to make your list now. Answer 10 more and it gets sharper.':'Only a few picks so far – 10 more will help a lot.'}</p>
+    <button class="btn primary" onclick="tgResults()">Show my top 10</button>
+    <button class="btn" onclick="tgMore()">Keep playing – 10 more</button></div>`, ROOT+'play/');
+}
+function tgShare(){
+  const n = cloud.user ? firstName() : '', url = ROOT+'play/'+(n?'?by='+encodeURIComponent(n):'');
+  const title = 'This or That · Festival Diaries · Goa', text = 'Play This or That and get a list of IFFI Goa 2026 films based on your taste 🎬';
+  if(navigator.share && matchMedia('(pointer: coarse)').matches){ navigator.share({title, text, url}).catch(()=>{}); return; }
+  const wa = 'https://wa.me/?text='+encodeURIComponent(text+'\n'+url);
+  openModal(`<div class="sharedlg"><h2>Invite friends to play</h2><p>Friends play the same 10 pairs and get their own festival top 10${n?` – the link says you invited them`:''}.</p>
+    <div class="shr-link"><input readonly value="${esc(url)}" onclick="this.select()" aria-label="Link to the game"><button class="icbtn" onclick="copyText('${esc(url)}')" aria-label="Copy link" title="Copy link">${IC.copy}</button></div>
+    <div class="shr-opts">
+      <button onclick="copyText('${esc(url)}')"><span class="ico">${IC.link}</span>Copy link</button>
+      <a href="${esc(wa)}" target="_blank" rel="noopener"><span class="ico wa">${IC.wa}</span>WhatsApp</a>
+      <button onclick="openTaste(true)"><span class="ico">${IC.open}</span>Back to my list</button>
+    </div></div>`, ROOT+'play/');
+}
 function tgResults(){
   const {pal, list} = tgRecommend(G.p), picked = G.p.filter(c=>c==='a'||c==='b').length;
   if(!picked){ openModal(`<div class="ask"><h2>No picks yet</h2><p>Choose one film from at least a few pairs and we’ll suggest festival films for you.</p><button class="btn primary" onclick="openTaste()">Play again</button></div>`, ROOT+'play/'); return; }
@@ -816,6 +844,7 @@ function tgResults(){
   const used={};
   const allIn = list.every(x=>x.m.status==='want'||x.m.status==='watched') && cloud.user;
   openModal(`<div class="tg tg-res">
+    <button class="shr" aria-label="Invite friends to play" title="Invite friends" onclick="tgShare()">${IC.share}</button>
     <h2>Your festival top 10</h2>
     <p class="tg-sub">From ${picked} pick${picked>1?'s':''}. These lean towards your taste, with some variety and at least two festival must-sees mixed in.</p>
     ${pals?`<div class="tg-pal"><b>Your taste palette</b>${pals}</div>`:''}
@@ -824,8 +853,9 @@ function tgResults(){
       <span class="tg-li">${x.m.acc?`<span class="tg-must">★ Must-see · ${esc(x.m.acc)}</span>`:''}<b>${esc(x.m.title)}</b><small>${esc([x.m.genre, TG_FIRST(x.m.country), x.m.runtime?x.m.runtime+' min':''].filter(Boolean).join(' · '))}</small>${ns(x.m)?`<small>Next: ${ns(x.m)}</small>`:''}<span class="tg-why">${esc(tgReason(x, used))}</span></span>
       ${x.m.status==='want'?'<span class="tg-saved" aria-label="In your watchlist">✓</span>':''}</button></li>`).join('')}</ol>
     <div class="tg-acts">
-      ${allIn?'<span class="tg-ok">✓ All in your watchlist</span>':`<button class="btn primary" onclick="tgSaveAll()">Save all 10 to my watchlist</button>`}
-      ${G.p.length<TG_PAIRS.length?`<button class="btn" onclick="tgMore()">Sharpen it: 12 more pairs</button>`:''}
+      ${allIn?'<span class="tg-ok">✓ All in your watchlist</span>':`<button class="btn primary" onclick="tgSaveAll()">${cloud.user?'Save all 10 to my watchlist':'Sign in to save your top 10 – free'}</button>`}
+      <button class="btn" onclick="tgShare()">${IC.share} Invite friends to play</button>
+      ${G.p.length<TG_PAIRS.length?`<button class="btn" onclick="tgMore()">Sharpen it: 10 more pairs</button>`:''}
       <button class="linkbtn" onclick="openTaste()">Start over</button>
     </div>
   </div>`, ROOT+'play/');
@@ -838,16 +868,16 @@ function tgSaveAll(after){
   if(!after || $('#scrim').classList.contains('open')) tgResults();
 }
 function tgHide(){ try{ localStorage.setItem(TG_KEY+'-hide','1'); }catch(e){} document.querySelector('.tbanner')?.remove(); }
-function tasteBanner(){
-  let hide=false; try{ hide=localStorage.getItem(TG_KEY+'-hide')==='1'; }catch(e){}
-  if(hide) return '';
-  const done=!!tgLoad();
-  if(!done) setTimeout(()=>{ const P=TG_PAIRS[0]; for(const s of [P.a,P.b]) new Image().src=tgImg(s[3]); }, 800);
-  const ic='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="8" height="14" rx="1.5"/><rect x="13.5" y="5" width="8" height="14" rx="1.5"/></svg>';
-  return `<div class="tbanner"><span class="tb-ic">${ic}</span>
-    <span class="tb-tx">${done?'<b>Your festival top 10 is ready</b><span>Based on your This or That picks.</span>':'<b>Not sure what to watch?</b><span>Play This or That: pick between famous films, get a festival top 10 for your taste.</span>'}</span>
-    <button class="btn primary sm" onclick="openTaste(${done})">${done?'See it':'Play'}</button>
-    <button class="tb-x" aria-label="Hide this" onclick="tgHide()">×</button></div>`;
+function tasteBanner(){   // on top of Discover until someone has played once
+  if(tgLoad()) return '';
+  setTimeout(()=>{ const P=TG_PAIRS[0]; for(const x of [P.a,P.b]) new Image().src=tgImg(x[3]); }, 800);
+  return `<div class="tbanner"><span class="tb-ic">${TG_IC}</span>
+    <span class="tb-tx"><b>Not sure what to watch?</b><span>Play This or That and get a list based on your taste.</span></span>
+    <button class="btn primary sm" onclick="openTaste()">Play</button></div>`;
+}
+function tasteReady(){   // after playing: signed-in people find it in the profile menu; guests get a slim reminder to save it
+  if(!tgLoad() || cloud.user) return '';
+  return `<button class="tready" onclick="openTaste(true)">${TG_IC}<span><b>Your festival top 10 is ready</b> · sign in to save it</span><span aria-hidden="true">›</span></button>`;
 }
 
 /* ---------- actions ---------- */
@@ -1129,6 +1159,7 @@ function menuAction(a){
   if(a==='key') setKey();
   if(a==='cloud') cloudToggle();
   if(a==='privacy') openPrivacy();
+  if(a==='taste') openTaste(!!tgLoad());
   if(a==='account') openAccount();
   if(a==='mine') setView('mine');
   if(a==='plan'){ state.smode='plan'; setView('schedule'); }

@@ -436,6 +436,7 @@ h2.day.sub{margin-top:26px}
 .fgroup{content-visibility:auto;contain-intrinsic-size:auto 170px}
 .tbanner{display:flex;align-items:center;gap:12px;background:var(--brand-tint);border:1px solid var(--brand-line);border-radius:12px;padding:12px 10px 12px 14px;margin:0 0 16px}
 .tb-ic{color:var(--green);flex:0 0 auto;display:flex}.tb-tx{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.35}.tb-tx b{font-size:16px}.tb-tx span{color:var(--muted);font-size:14.5px}
+.tready{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--brand-tint);border:1px solid var(--brand-line);border-radius:10px;padding:9px 12px;margin:0 0 14px;color:var(--text);font-size:14.5px;cursor:pointer}.tready svg{color:var(--green);flex:0 0 auto;width:18px;height:18px}.tready span:nth-child(2){flex:1}.tready span:last-child{color:var(--green);font-size:20px;line-height:1}
 .tb-x{background:none;border:0;font-size:22px;line-height:1;color:var(--muted);padding:4px 6px;cursor:pointer;flex:0 0 auto}
 .tg{max-width:560px;margin:0 auto}.tg-top{display:flex;align-items:center;gap:10px;margin:2px 40px 14px 0;font-size:14px;color:var(--muted);white-space:nowrap}
 .tg-bar{flex:1;height:6px;border-radius:3px;background:var(--line);overflow:hidden}.tg-bar i{display:block;height:100%;background:var(--green);border-radius:3px;transition:width .25s}
@@ -461,6 +462,8 @@ h2.day.sub{margin-top:26px}
 .tg-why{font-size:13.5px;color:var(--green);font-weight:600;margin-top:2px}.tg-saved{color:var(--green);font-weight:700}.tg-must{align-self:flex-start;font-size:12px;font-weight:700;color:var(--gold);background:#fbf3df;border-radius:6px;padding:1px 7px;margin-bottom:3px}
 .tg-acts{display:flex;flex-direction:column;align-items:stretch;gap:8px;margin-top:14px}.tg-acts .linkbtn{align-self:center}.tg-ok{text-align:center;color:var(--green);font-weight:600}
 .tg-back{display:block;margin:-4px 0 8px}
+.tg-introic{display:inline-flex;width:52px;height:52px;border-radius:14px;background:var(--brand-tint);color:var(--green);align-items:center;justify-content:center;margin-bottom:8px}.tg-intro .btn,.tg-half .btn{display:block;width:100%;max-width:320px;margin:8px auto 0}
+.tg-res .shr{position:absolute;top:14px;right:56px}.tg-acts .btn svg{width:18px;height:18px;vertical-align:-3px;margin-right:4px}
 @media (max-width:640px){.tg-q{font-size:20px}.tg-pair{gap:6px}.tg-film{padding:6px}.tg-or{font-size:11px}.tg-hook{font-size:13px}.tb-tx span{font-size:13.5px}}
 .snote{font-size:14px;color:var(--muted);margin-top:3px;line-height:1.35}
 .vm .snote{display:block;margin-top:2px}
