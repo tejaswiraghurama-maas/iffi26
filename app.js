@@ -125,6 +125,7 @@ function routeOf(href){
   if((r=p.match(/^film\/([^/]+)\/?$/))) return {film:decodeURIComponent(r[1])};
   if((r=p.match(/^venue\/([^/]+)\/?$/))) return {venue:decodeURIComponent(r[1])};
   if(/^privacy\/?$/.test(p)) return {privacy:true};
+  if(/^play\/?$/.test(p)) return {play:true};
   if(/^list\/?$/.test(p)){ const q=(href.split('?')[1]||'').split('#')[0]; const sp=new URLSearchParams(q); return {list:sp.get('f')||'', by:sp.get('n')||''}; }
   if(/^schedule\/?$/.test(p)) return {view:'schedule'};
   if(/^my-list\/?$/.test(p)) return {view:'mine'};
@@ -132,13 +133,14 @@ function routeOf(href){
 }
 function syncTitle(){
   const r=routeOf(), m=r.film&&db.movies.find(x=>slug(x.title)===r.film), v=r.venue&&venueById(r.venue);
-  const t = m ? m.title : v ? v.name : r.privacy ? 'Privacy & your data' : r.list!==undefined ? listTitle(r.by) : VIEW_NAME[r.view||state.view];
+  const t = m ? m.title : v ? v.name : r.privacy ? 'Privacy & your data' : r.play ? 'This or That' : r.list!==undefined ? listTitle(r.by) : VIEW_NAME[r.view||state.view];
   document.title = t ? t+' · '+SITE : SITE;
 }
 function openRoute(r){
   if(r.film){ const m=db.movies.find(x=>slug(x.title)===r.film); if(m){ openDetail(m.id); return true; } }
   if(r.venue && venueById(r.venue)){ openVenue(r.venue); return true; }
   if(r.privacy){ openPrivacy(); return true; }
+  if(r.play){ openTaste(!!tgLoad()); return true; }
   if(r.list!==undefined){ openSharedList(r.list, r.by); return true; }
   return false;
 }
@@ -148,7 +150,7 @@ function initRoute(){
   const hf=(location.hash.match(/film=([^&]+)/)||[])[1], hv=(location.hash.match(/venue=([^&]+)/)||[])[1];
   if(hf) history.replaceState(null,'',ROOT+'film/'+hf+'/'); else if(hv) history.replaceState(null,'',ROOT+'venue/'+hv+'/');
   const r=routeOf();
-  if(r.film||r.venue||r.privacy||r.list!==undefined){ initRoute.pending=r; history.replaceState({view:'all'},'',ROOT); state.view='all'; }
+  if(r.film||r.venue||r.privacy||r.play||r.list!==undefined){ initRoute.pending=r; history.replaceState({view:'all'},'',ROOT); state.view='all'; }
   else { state.view=r.view; history.replaceState({view:r.view},'',ROOT+VIEW_PATH[r.view]+(r.unknown?'':location.search)); }
 }
 initRoute();
@@ -512,7 +514,7 @@ function renderGrid(kind){
   let list = db.movies.filter(m => (kind==='all' ? fOK(m) : m.status===kind) && matches(m));
   if(kind==='watched') list.sort((a,b)=>(b.watchedOn||'').localeCompare(a.watchedOn||'') || byTitle(a,b));
   else list.sort(kind==='want' && hasShows() ? byNext : byTitle);
-  let html = kind==='all' ? filterBar() : '';
+  let html = kind==='all' ? filterBar() + (filtering ? '' : tasteBanner()) : '';
   if(!list.length){
     if(state.now) return html + `<div class="empty"><h3>Nothing screening right now</h3>No shows are on or starting in the next 2 hours.</div>`;
     if(filtering) return html + `<div class="empty"><h3>No films match</h3>Try another search or filter.</div>`;
@@ -651,6 +653,203 @@ const setHdr = () => document.documentElement.style.setProperty('--hdr', (docume
 addEventListener('resize', setHdr); setHdr();
 addEventListener('scroll', ()=>{ const f=document.querySelector('.filters'); document.body.classList.toggle('fstuck', !!f && scrollY>0 && f.getBoundingClientRect().top<=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hdr'))+1); }, {passive:true});
 
+/* ---------- This or That: build a taste palette from famous films, then suggest festival films ----------
+   Every visitor sees the same pairs in the same order. Each pick only nudges a few taste "dials" a little;
+   recommendations lean towards the palette and are mixed across countries and tracks – never a strict match. */
+const TG_PAIRS = [
+  {a:['Drive My Car',2021,'Ryusuke Hamaguchi','drive-my-car','A grieving actor and his quiet driver find words on long drives'], b:['Mad Max: Fury Road',2015,'George Miller','mad-max-fury-road','Two hours of desert chase, fire and chrome'], v:{pace:1}},
+  {a:['Oldboy',2003,'Park Chan-wook','oldboy','Locked up for 15 years, then set loose to find out why'], b:['Amélie',2001,'Jean-Pierre Jeunet','amelie','A shy Paris waitress secretly fixes strangers’ lives'], v:{tone:1, thrill:.4}},
+  {a:['Free Solo',2018,'E. Chai Vasarhelyi, Jimmy Chin','free-solo','A climber scales El Capitan with no ropes – for real'], b:['Life of Pi',2012,'Ang Lee','life-of-pi','A boy, a lifeboat and a Bengal tiger, lost at sea'], v:{real:1, fantasy:-.5}},
+  {a:['Pather Panchali',1955,'Satyajit Ray','pather-panchali','A poor family’s life in a Bengal village, through a boy’s eyes'], b:['Bicycle Thieves',1948,'Vittorio De Sica','bicycle-thieves','A father and son search Rome for his stolen bicycle'], v:{india:1, europe:-1}, both:{era:.3}, rel:{b:['Vittorio De Sica - Staging Life','this documentary is about its director']}},
+  {a:['Shoplifters',2018,'Hirokazu Kore-eda','shoplifters','A makeshift family of petty thieves takes in a little girl'], b:['Roma',2018,'Alfonso Cuarón','roma','A year in the life of a housekeeper in 1970s Mexico City'], v:{asia:1, latam:-1}, both:{family:.3}},
+  {a:['Everything Everywhere All at Once',2022,'Daniel Kwan, Daniel Scheinert','everything-everywhere-all-at-once','A laundromat owner battles across the multiverse – and her tax audit'], b:['12 Angry Men',1957,'Sidney Lumet','12-angry-men','One juror holds out, in one hot room'], v:{style:1, era:-.5}},
+  {a:['The Grand Budapest Hotel',2014,'Wes Anderson','the-grand-budapest-hotel','A hotel concierge and his lobby boy on a madcap caper'], b:['Manchester by the Sea',2016,'Kenneth Lonergan','manchester-by-the-sea','A man comes home to care for his nephew after a death'], v:{humour:1}},
+  {a:['RRR',2022,'S. S. Rajamouli','rrr','Two revolutionaries, one friendship, giant action set pieces'], b:['Tár',2022,'Todd Field','tar','A star conductor at the peak of her power begins to fall'], v:{access:1, pace:-.3}},
+  {a:['Aftersun',2022,'Charlotte Wells','aftersun','A daughter remembers a holiday with her young father'], b:['The Battle of Algiers',1966,'Gillo Pontecorvo','the-battle-of-algiers','Algeria’s fight for independence, filmed like a newsreel'], v:{focus:1}},
+  {a:['Lawrence of Arabia',1962,'David Lean','lawrence-of-arabia','A British officer in the Arab revolt – nearly four hours of desert'], b:['Whiplash',2014,'Damien Chazelle','whiplash','A young drummer and a brutal teacher, in 106 tense minutes'], v:{length:1}, rel:{a:['Maverick: The Epic Adventures of David Lean','this documentary is about its director']}},
+  {a:['Lagaan',2001,'Ashutosh Gowariker','lagaan','Villagers bet their taxes on a cricket match against the British'], b:['The Lunchbox',2013,'Ritesh Batra','the-lunchbox','A mixed-up lunch delivery sparks letters between two strangers'], v:{access:.7}, both:{india:.4}, rel:{a:['Lagaan','it’s screening at the festival']}},
+  {a:['Get Out',2017,'Jordan Peele','get-out','Meeting the girlfriend’s parents turns into a nightmare'], b:['Moonlight',2016,'Barry Jenkins','moonlight','Three chapters in the life of a young man in Miami'], v:{thrill:1}},
+  // — refine: 12 more —
+  {a:['Schindler’s List',1993,'Steven Spielberg','schindler-s-list','A businessman saves over a thousand Jews in the Holocaust'], b:['Jojo Rabbit',2019,'Taika Waititi','jojo-rabbit','A Hitler Youth boy discovers a secret in his attic'], v:{humour:-1, tone:.4}, both:{history:.6}},
+  {a:['Arrival',2016,'Denis Villeneuve','arrival','A linguist tries to talk with visitors from space'], b:['Nomadland',2020,'Chloé Zhao','nomadland','A widow lives on the road in her van across the American West'], v:{fantasy:1}, both:{pace:.3}},
+  {a:['Spirited Away',2001,'Hayao Miyazaki','spirited-away','A girl is trapped in a bathhouse for spirits'], b:['Pan’s Labyrinth',2006,'Guillermo del Toro','pan-s-labyrinth','A girl escapes wartime Spain into a dark fairy tale'], v:{anim:1}, both:{fantasy:.5}},
+  {a:['A Separation',2011,'Asghar Farhadi','a-separation','A divorce in Tehran spirals into a moral maze'], b:['Anatomy of a Fall',2023,'Justine Triet','anatomy-of-a-fall','A writer stands trial over her husband’s death'], v:{mideast:1, europe:-1}},
+  {a:['Kumbalangi Nights',2019,'Madhu C. Narayanan','kumbalangi-nights','Four brothers in a Kerala fishing village learn to be a family'], b:['Gangs of Wasseypur',2012,'Anurag Kashyap','gangs-of-wasseypur','Decades of coal-mafia feuds in Jharkhand'], v:{tone:-1, thrill:-.4}, both:{india:.4}},
+  {a:['2001: A Space Odyssey',1968,'Stanley Kubrick','2001-a-space-odyssey','From apes to Jupiter, told mostly in images'], b:['Before Sunrise',1995,'Richard Linklater','before-sunrise','Two strangers talk all night, walking through Vienna'], v:{style:.7, romance:-.5}},
+  {a:['Memories of Murder',2003,'Bong Joon-ho','memories-of-murder','Two detectives chase a serial killer in 1980s rural Korea'], b:['The Shawshank Redemption',1994,'Frank Darabont','the-shawshank-redemption','Hope and friendship over two decades in prison'], v:{access:-.7, tone:.3}},
+  {a:['Tokyo Story',1953,'Yasujirō Ozu','tokyo-story','Elderly parents visit their busy grown-up children'], b:['Past Lives',2023,'Celine Song','past-lives','Childhood sweethearts meet again 24 years later'], v:{era:1}, both:{pace:.3}},
+  {a:['Children of Heaven',1997,'Majid Majidi','children-of-heaven','A brother and sister share one pair of shoes'], b:['Marriage Story',2019,'Noah Baumbach','marriage-story','A couple goes through a painful divorce'], v:{kids:1}},
+  {a:['Cinema Paradiso',1988,'Giuseppe Tornatore','cinema-paradiso','A filmmaker remembers his village cinema'], b:['City of God',2002,'Fernando Meirelles, Kátia Lund','city-of-god','Growing up among gangs in Rio’s favelas'], v:{nostalgia:1, tone:-.3}},
+  {a:['Portrait of a Lady on Fire',2019,'Céline Sciamma','portrait-of-a-lady-on-fire','A painter and her subject fall in love in 18th-century France'], b:['Parasite',2019,'Bong Joon-ho','parasite','A poor family schemes its way into a rich family’s home'], v:{romance:1, thrill:-1}},
+  {a:['Little Miss Sunshine',2006,'Jonathan Dayton, Valerie Faris','little-miss-sunshine','A chaotic family road trip to a kids’ pageant'], b:['Cast Away',2000,'Robert Zemeckis','cast-away','One man, alone on a desert island'], v:{family:1, humour:.3}},
+];
+const TG_CORE = 12;
+// how each dial is described: [the "+" side, the "−" side]
+const TG_DIAL = {pace:['Slow-burning','Fast-paced'], tone:['Dark','Warm'], real:['Real life','Fiction'], humour:['Funny','Serious'], access:['Crowd-pleasing','Challenging'],
+  focus:['Personal','Political'], style:['Bold & unusual','Classic storytelling'], length:['Epic','Tight'], era:['Classics','New films'], thrill:['Genre thrills','Quiet drama'],
+  romance:['Romance','Suspense'], fantasy:['Imaginative','Grounded'], anim:['Animation','Live action'], kids:['Young lives','Grown-up lives'], family:['Families','Loners'],
+  nostalgia:['Nostalgic','Raw'], history:['History',''], india:['Indian',''], asia:['Asian',''], europe:['European',''], latam:['Latin American',''], mideast:['Middle Eastern & African','']};
+const TG_REGION = new Set(['india','asia','europe','latam','mideast']);
+const TG_W = d => TG_REGION.has(d) ? .3 : d==='history' ? .6 : 1;   // where a film is from counts for little
+const TG_KEY = 'fd-taste';
+function tgLoad(){ try{ const d=JSON.parse(localStorage.getItem(TG_KEY)||'null'); return d&&Array.isArray(d.p)?d:null; }catch(e){ return null; } }
+function tgStore(p){ try{ localStorage.setItem(TG_KEY, JSON.stringify({v:1, p, at:Date.now()})); }catch(e){} }
+
+/* the taste palette: each dial is the average nudge it got, softened when it was only asked once or twice */
+function tgPalette(p){
+  const sum={}, n={};
+  p.forEach((c,i)=>{ const P=TG_PAIRS[i]; if(!P || (c!=='a'&&c!=='b')) return; const s=c==='a'?1:-1;
+    for(const [d,w] of Object.entries(P.v)){ sum[d]=(sum[d]||0)+s*w; n[d]=(n[d]||0)+Math.abs(w); }
+    for(const [d,w] of Object.entries(P.both||{})){ sum[d]=(sum[d]||0)+w; n[d]=(n[d]||0)+w; } });
+  const pal={}; for(const d in sum){ const avg=sum[d]/n[d]; pal[d] = avg * n[d]/(n[d]+.6); }
+  return pal;
+}
+/* where each festival film sits on the same dials, from its genre, track, country, length and taste tags */
+const TG_FIRST = c => String(c||'').split(',')[0].trim();
+function tgVec(m){
+  const t=m.tt||'', h=c=>t.includes(c), g=String(m.genre||''), sec=String(m.section||''), rt=+m.runtime||0;
+  const doc=/docu/i.test(g)||/Docu Montage|Non-Feature/.test(sec), anim=/anim/i.test(g)||sec==='Animation'||h('Z');
+  const classic=(+m.year && +m.year<2000)||/classic/i.test(g)||/Restored Classics|Wajda/.test(sec)||(/Centenary|Homage|Golden Jubilee/.test(sec)&&rt>=90);
+  const arty=/International Competition|Emerging|Debut|Experimental|New Horizons/.test(sec);
+  const c=TG_FIRST(m.country), v={};
+  v.pace = h('S')?1 : h('F')?-1 : h('T')?-.4 : 0;
+  v.tone = h('D')?1 : h('W')?-1 : h('C')?-.4 : 0;
+  v.real = doc?1:-.3;
+  v.humour = h('C')?1 : h('D')?-.5 : 0;
+  v.access = h('P')?1 : (h('A')||h('X'))?-1 : arty?-.4 : 0;
+  v.focus = h('I')?1 : h('O')?-1 : 0;
+  v.style = h('X')?1 : classic?-.5 : h('P')?-.3 : 0;
+  v.length = rt>=140?1 : rt>=120?.4 : rt&&rt<=95?-.7 : rt&&rt<=105?-.3 : 0;
+  v.era = classic?1:-.3;
+  v.thrill = h('T')?1 : h('S')?-.4 : 0;
+  v.romance = h('R')?1 : h('T')?-.5 : 0;
+  v.fantasy = h('Y')?1 : doc?-.6 : -.2;
+  v.anim = anim?1:-.2;
+  v.kids = h('K')?1:0;
+  v.family = h('M')?1 : h('I')?-.3 : 0;
+  v.nostalgia = h('N')?1 : h('D')?-.2 : 0;
+  v.history = h('H')?1:0;
+  if(/India/.test(c)) v.india=1;
+  else if(/Japan|China|Korea|Taiwan|Hong Kong|Vietnam|Thailand|Philippines|Singapore|Indonesia|Malaysia|Cambodia|Myanmar|Kyrgyz|Kazakh|Uzbek|Nepal|Bangladesh/.test(c)) v.asia=1;
+  else if(/Mexico|Argentina|Brazil|Chile|Peru|Bolivia|Ecuador|Cuba|Haiti|Dominican|Uruguay|Colombia/.test(c)) v.latam=1;
+  else if(/Iran|Turkey|Egypt|Saudi|Lebanon|Palestine|UAE|Iraq|Qatar|Morocco|Libya|Tunisia|Ghana|Kenya|Uganda|South Africa|Nigeria|Ethiopia|Central African|Congo/.test(c)) v.mideast=1;
+  else if(c && !/USA|Canada/.test(c)) v.europe=1;
+  return v;
+}
+function tgRecommend(p, k=10){
+  const pal=tgPalette(p), rel={};
+  p.forEach((c,i)=>{ const r=TG_PAIRS[i]?.rel?.[c]; if(r) rel[r[0].toLowerCase()]={why:r[1], by:TG_PAIRS[i][c][0]}; });
+  const n=now();
+  const pool = db.movies.filter(m=>isOfficial(m) && m.status!=='watched' && !((+m.runtime||99)<40) && (m.screenings||[]).length && !(m.screenings.every(s=>endOf(m,s)<n)))
+    .map(m=>{ const v=tgVec(m); let s=0; const parts=[];
+      for(const d in pal){ const c=pal[d]*(v[d]||0)*TG_W(d); s+=c; if(c>0 && TG_DIAL[d][(v[d]>0)?0:1]) parts.push([c,d,v[d]>0?0:1]); }
+      const r=rel[m.title.toLowerCase()]; if(r) s+=1.2;
+      return {m, s:s+(m.tt?.05:0), parts:parts.sort((a,b)=>b[0]-a[0]), r, region:Object.keys(v).find(d=>TG_REGION.has(d))||'other'}; })
+    .sort((a,b)=>b.s-a.s);
+  // keep the list varied: each extra film from the same part of the world or the same track costs a little
+  const out=[], reg={}, sec={};
+  while(out.length<k && pool.length){
+    let bi=0, bv=-Infinity;
+    for(let i=0;i<Math.min(pool.length,60);i++){ const x=pool[i]; const adj=x.s - .35*(reg[x.region]||0) - .3*(sec[x.m.section]||0); if(adj>bv){ bv=adj; bi=i; } }
+    const x=pool.splice(bi,1)[0]; out.push(x); reg[x.region]=(reg[x.region]||0)+1; sec[x.m.section]=(sec[x.m.section]||0)+1;
+  }
+  // always include at least two must-sees, whatever the taste: the closest-fitting ones, placed 3rd and 6th
+  const accIn = out.filter(x=>x.m.acc);
+  if(accIn.length<2){
+    const add = pool.filter(x=>x.m.acc).slice(0, 2-accIn.length); add.forEach(x=>x.must=1);
+    const rest = out.filter(x=>!x.m.acc).slice(0, k-accIn.length-add.length);
+    const keep = out.filter(x=>x.m.acc || rest.includes(x));
+    add.forEach((x,j)=>keep.splice(Math.min([2,5][j], keep.length), 0, x));
+    return {pal, list:keep};
+  }
+  return {pal, list:out};
+}
+function tgReason(x, used={}){
+  if(x.r) return `You picked ${x.r.by} – ${x.r.why}`;
+  if(x.must) return 'A must-see, whatever your taste';
+  // name the two strongest reasons, but avoid repeating the same ones down the list
+  const c = x.parts.filter(p=>!TG_REGION.has(p[1]));
+  const fresh = c.filter(p=>(used[p[1]]||0)<2), pick = (fresh.length>=2 ? fresh : c).slice(0,2);
+  pick.forEach(p=>used[p[1]]=(used[p[1]]||0)+1);
+  const w = pick.map(p=>TG_DIAL[p[1]][p[2]].toLowerCase());
+  return w.length ? 'Leans ' + w.join(' and ') : 'A wildcard to widen your festival';
+}
+
+/* ---------- game screens ---------- */
+const G = {i:0, p:[], lim:TG_CORE};
+const tgImg = f => ROOT+'posters/game/'+f+'.webp';
+function tgPreload(from=0){ TG_PAIRS.slice(from, from+TG_CORE).forEach((P,j)=>setTimeout(()=>{ for(const s of [P.a,P.b]) new Image().src=tgImg(s[3]); }, j*60)); }
+function openTaste(results){
+  $('#menu')?.classList.remove('open');
+  const saved=tgLoad();
+  if(results && saved){ G.p=saved.p.slice(); return tgResults(); }
+  G.i=0; G.p=[]; G.lim=TG_CORE; tgPreload(0); tgStep();
+}
+function tgCard(s, side){
+  return `<button class="tg-film" onclick="tgPick('${side}',this)" aria-label="${esc(s[0])} (${s[1]})">
+    <span class="tg-img" style="--h:${hue(s[0])}"><em>${esc(s[0])}</em><img src="${tgImg(s[3])}" alt="" decoding="async" onerror="this.remove()"></span>
+    <b>${esc(s[0])}</b><small>${s[1]} · ${esc(s[2])}</small><span class="tg-hook">${esc(s[4])}</span></button>`;
+}
+function tgStep(){
+  const P=TG_PAIRS[G.i], done=G.i-(G.lim>TG_CORE?TG_CORE:0), tot=G.lim>TG_CORE?TG_PAIRS.length-TG_CORE:TG_CORE;
+  openModal(`<div class="tg">
+    <div class="tg-top"><div class="tg-bar" role="progressbar" aria-valuemin="0" aria-valuemax="${tot}" aria-valuenow="${done}"><i style="width:${done/tot*100}%"></i></div><span>${done+1} of ${tot}</span></div>
+    <h2 class="tg-q">Which would you rather watch?</h2>
+    <p class="tg-sub">Seen them or not – go with your gut.</p>
+    <div class="tg-pair">${tgCard(P.a,'a')}<span class="tg-or">or</span>${tgCard(P.b,'b')}</div>
+    <div class="tg-foot"><button class="linkbtn" onclick="tgBack()" ${G.i? '' : 'style="visibility:hidden"'}>‹ Back</button><button class="linkbtn" onclick="tgPick('s')">Can’t choose – skip</button></div>
+  </div>`, ROOT+'play/');
+}
+function tgPick(c, el){
+  G.p[G.i]=c;
+  const go=()=>{ G.i++; if(G.i>=G.lim){ tgStore(G.p); tgResults(); } else tgStep(); };
+  if(el){ el.classList.add('chosen'); el.parentNode.classList.add('picked'); setTimeout(go, 230); } else go();
+}
+function tgBack(){ if(G.i>(G.lim>TG_CORE?TG_CORE:0)){ G.i--; tgStep(); } }
+function tgMore(){ G.lim=TG_PAIRS.length; G.i=TG_CORE; G.p.length=TG_CORE; tgPreload(TG_CORE); tgStep(); }
+function tgResults(){
+  const {pal, list} = tgRecommend(G.p), picked = G.p.filter(c=>c==='a'||c==='b').length;
+  if(!picked){ openModal(`<div class="ask"><h2>No picks yet</h2><p>Choose one film from at least a few pairs and we’ll suggest festival films for you.</p><button class="btn primary" onclick="openTaste()">Play again</button></div>`, ROOT+'play/'); return; }
+  const dials = Object.entries(pal).filter(([d,v])=>!TG_REGION.has(d) && TG_DIAL[d][1] && Math.abs(v)>=.2).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,6);
+  const pals = dials.map(([d,v])=>`<div class="tg-dial"><span class="${v>0?'on':''}">${TG_DIAL[d][0]}</span><i><b style="left:${(1-v)/2*100}%"></b></i><span class="${v<0?'on':''}">${TG_DIAL[d][1]}</span></div>`).join('');
+  const ns = m => { const x=nextScreening(m); return x ? fmtShort(x.start)+' · '+fmtTime(x.start) : ''; };
+  const used={};
+  const allIn = list.every(x=>x.m.status==='want'||x.m.status==='watched') && cloud.user;
+  openModal(`<div class="tg tg-res">
+    <h2>Your festival top 10</h2>
+    <p class="tg-sub">From ${picked} pick${picked>1?'s':''}. These lean towards your taste, with some variety and at least two festival must-sees mixed in.</p>
+    ${pals?`<div class="tg-pal"><b>Your taste palette</b>${pals}</div>`:''}
+    <ol class="tg-list">${list.map(x=>`<li><button onclick="window._tgBack=1;openDetail('${x.m.id}')">
+      <span class="tg-mini">${poster(x.m,true)}</span>
+      <span class="tg-li">${x.m.acc?`<span class="tg-must">★ Must-see · ${esc(x.m.acc)}</span>`:''}<b>${esc(x.m.title)}</b><small>${esc([x.m.genre, TG_FIRST(x.m.country), x.m.runtime?x.m.runtime+' min':''].filter(Boolean).join(' · '))}</small>${ns(x.m)?`<small>Next: ${ns(x.m)}</small>`:''}<span class="tg-why">${esc(tgReason(x, used))}</span></span>
+      ${x.m.status==='want'?'<span class="tg-saved" aria-label="In your watchlist">✓</span>':''}</button></li>`).join('')}</ol>
+    <div class="tg-acts">
+      ${allIn?'<span class="tg-ok">✓ All in your watchlist</span>':`<button class="btn primary" onclick="tgSaveAll()">Save all 10 to my watchlist</button>`}
+      ${G.p.length<TG_PAIRS.length?`<button class="btn" onclick="tgMore()">Sharpen it: 12 more pairs</button>`:''}
+      <button class="linkbtn" onclick="openTaste()">Start over</button>
+    </div>
+  </div>`, ROOT+'play/');
+}
+function tgSaveAll(after){
+  if(!cloud.user){ try{ localStorage.setItem(TG_KEY+'-save','1'); }catch(e){} askSignIn(); return; }
+  const saved=tgLoad(); if(saved) G.p=saved.p.slice();
+  let n=0; for(const x of tgRecommend(G.p).list) if(x.m.status==='none'||!x.m.status){ x.m.status='want'; n++; }
+  save(); render(); toast(n ? `Added ${n} film${n>1?'s':''} to My Watchlist` : 'Already in your watchlist');
+  if(!after || $('#scrim').classList.contains('open')) tgResults();
+}
+function tgHide(){ try{ localStorage.setItem(TG_KEY+'-hide','1'); }catch(e){} document.querySelector('.tbanner')?.remove(); }
+function tasteBanner(){
+  let hide=false; try{ hide=localStorage.getItem(TG_KEY+'-hide')==='1'; }catch(e){}
+  if(hide) return '';
+  const done=!!tgLoad();
+  if(!done) setTimeout(()=>{ const P=TG_PAIRS[0]; for(const s of [P.a,P.b]) new Image().src=tgImg(s[3]); }, 800);
+  const ic='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="8" height="14" rx="1.5"/><rect x="13.5" y="5" width="8" height="14" rx="1.5"/></svg>';
+  return `<div class="tbanner"><span class="tb-ic">${ic}</span>
+    <span class="tb-tx">${done?'<b>Your festival top 10 is ready</b><span>Based on your This or That picks.</span>':'<b>Not sure what to watch?</b><span>Play This or That: pick between famous films, get a festival top 10 for your taste.</span>'}</span>
+    <button class="btn primary sm" onclick="openTaste(${done})">${done?'See it':'Play'}</button>
+    <button class="tb-x" aria-label="Hide this" onclick="tgHide()">×</button></div>`;
+}
+
 /* ---------- actions ---------- */
 const find = id => db.movies.find(m=>m.id===id);
 function toggleS(mid,sid,field){
@@ -716,11 +915,11 @@ function delMovie(mid){ if(!confirm('Delete this film and its showtimes?')) retu
 
 /* ---------- modals ---------- */
 function openModal(html, url){ const wasOpen=$('#scrim').classList.contains('open'); $('#modal').innerHTML = `<button class="x" onclick="closeModal()" aria-label="Close">×</button>` + html; $('#scrim').classList.add('open'); document.body.style.overflow='hidden'; if(!wasOpen && !history.state?.modal) history.pushState({modal:1},'',url||location.href); else if(url && location.href!==url) history.replaceState(history.state,'',url); syncTitle(); if(!wasOpen){ openModal._ret=document.activeElement; $('#modal .x').focus({preventScroll:true}); } }
-function closeModal(fromBack){ if(!$('#scrim').classList.contains('open')) return; $('#scrim').classList.remove('open'); document.body.style.overflow=''; try{ openModal._ret?.focus({preventScroll:true}); }catch(e){} if(fromBack!==true && history.state?.modal) history.back(); }
+function closeModal(fromBack){ if(!$('#scrim').classList.contains('open')) return; window._tgBack=0; $('#scrim').classList.remove('open'); document.body.style.overflow=''; try{ openModal._ret?.focus({preventScroll:true}); }catch(e){} if(fromBack!==true && history.state?.modal) history.back(); }
 window.addEventListener('popstate', ()=>{ if($('#sheet').classList.contains('open')) closeSheet(true); else if($('#scrim').classList.contains('open')) closeModal(true); });
 window.addEventListener('popstate', ()=>{   // keep the page in step with the URL (back / forward)
   const r=routeOf();
-  if(r.film||r.venue||r.privacy||r.list!==undefined){ if(!$('#scrim').classList.contains('open')) openRoute(r); }
+  if(r.film||r.venue||r.privacy||r.play||r.list!==undefined){ if(!$('#scrim').classList.contains('open')) openRoute(r); }
   else if(state.view!==r.view) setView(r.view, true);
   syncTitle();
 });
@@ -740,7 +939,8 @@ function openDetail(id){
   const extra = [m.originalTitle?`<div><b>Original title:</b> ${esc(m.originalTitle)}</div>`:'', cs.length>1?`<div><b>Countries:</b> ${esc(cs.join(', '))}</div>`:'', m.cast?`<div><b>Cast:</b> ${esc(m.cast)}</div>`:'', m.festivals?`<div><b>Festivals:</b> ${esc(String(m.festivals).replace(/\s*\|\s*/g,', '))}</div>`:'', m.notes?`<div>${esc(m.notes)}</div>`:''].join('');
   const going = scr.find(s=>(s.going||s.booked) && endOf(m,s)>n);
   const I = d => `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
-  openModal(`<button class="shr" aria-label="Share this film" title="Share" onclick="shareFilm('${m.id}')">${I('<path d="M12 15V3.5M7.5 8L12 3.5 16.5 8"/><path d="M5 12.5v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>')}</button><div class="dhead">
+  const tgb = window._tgBack ? `<button class="linkbtn tg-back" onclick="openTaste(true)">‹ Your top 10</button>` : '';
+  openModal(tgb+`<button class="shr" aria-label="Share this film" title="Share" onclick="shareFilm('${m.id}')">${I('<path d="M12 15V3.5M7.5 8L12 3.5 16.5 8"/><path d="M5 12.5v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>')}</button><div class="dhead">
     <a class="dposter" href="${ytUrl(m)}" target="_blank" rel="noopener" aria-label="Watch the trailer of ${esc(m.title)} on YouTube">${poster(m,false,true)}<span class="play"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z" fill="currentColor"/></svg>Trailer</span></a>
     <div class="dinfo">
       <h2>${esc(m.title)}</h2>
@@ -1022,7 +1222,7 @@ function privacyHtml(){
 <h2>Privacy &amp; your data</h2><p class="upd">Last updated 17 November 2026</p>
 <p>Festival Diaries · Goa is a free, unofficial fan guide to IFFI Goa 2026, run privately by a film fan – not a company. This notice explains what we collect and why, in line with India’s Digital Personal Data Protection Act, 2023.</p>
 <h3>If you don’t sign in</h3>
-<p>We collect nothing. Anything you do stays on your own phone or computer. There are no ads, no analytics and no tracking cookies.</p>
+<p>We collect nothing. Anything you do stays on your own phone or computer – including your This or That picks. There are no ads, no analytics and no tracking cookies.</p>
 <h3>If you sign in with Google</h3>
 <p>We store:</p>
 <ul><li>your <b>name, email address and profile photo</b>, which Google shares when you sign in</li>
@@ -1184,6 +1384,7 @@ async function onUser(u){
     if(pm){ pm.status = pd.st; if(pd.st==='watched' && !pm.watchedOn) pm.watchedOn = localISO(); const ps = pd.sk && pm.screenings.find(y=>skey(y)===pd.sk); if(ps) ps.going=true; save(); render(); if(ps){ if($('#scrim').classList.contains('open')) closeModal(); toast('Signed in – added to My Plan'); } else { openDetail(pm.id); toast(pd.st==='want'?'Signed in – saved to My Watchlist':'Signed in – marked as watched'); } }
     else if(cloud.agreed){ if($('#scrim').classList.contains('open') && $('#modal .ask')) closeModal(); toast('Signed in – your watchlist is saved online'); }
     if(cloud.pendingList){ const [c,b]=cloud.pendingList; cloud.pendingList=null; saveSharedList(c,b); }
+    try{ if(localStorage.getItem(TG_KEY+'-save')){ localStorage.removeItem(TG_KEY+'-save'); tgSaveAll(true); } }catch(e){}
     if(!cloud.consent) askConsent();   // signed in before the privacy notice existed
   }catch(e){ console.warn(e); toast('Could not reach online storage'); }
 }
