@@ -114,8 +114,8 @@ function setView(v, fromRoute){ const ch=state.view!==v; state.view=v; persistUI
    schedule/        Schedule        venue/<id>/    a venue
    my-list/         My Watchlist                                                      */
 const ROOT = document.baseURI.replace(/[?#].*$/,'').replace(/[^/]*$/,'');
-const VIEW_PATH = {all:'', schedule:'schedule/', mine:'my-list/'};
-const VIEW_NAME = {all:'', schedule:'Schedule', mine:'Watchlist'};
+const VIEW_PATH = {all:'', schedule:'schedule/', mine:'my-list/', fest:'festival-darlings/'};
+const VIEW_NAME = {all:'', schedule:'Schedule', mine:'Watchlist', fest:'Festival darlings'};
 const SITE = 'Festival Diaries · Goa';
 const filmURL = m => ROOT+'film/'+slug(m.title)+'/';
 const venueURL = v => ROOT+'venue/'+v.id+'/';
@@ -129,6 +129,7 @@ function routeOf(href){
   if(/^list\/?$/.test(p)){ const q=(href.split('?')[1]||'').split('#')[0]; const sp=new URLSearchParams(q); return {list:sp.get('f')||'', by:sp.get('n')||''}; }
   if(/^schedule\/?$/.test(p)) return {view:'schedule'};
   if(/^my-list\/?$/.test(p)) return {view:'mine'};
+  if(/^festival-darlings\/?$/.test(p)) return {view:'fest'};
   return {view:'all', unknown:p!==''};
 }
 function syncTitle(){
@@ -177,7 +178,7 @@ function render(){
   if(!shows) state.now=false;
   $('#n-mine').textContent = db.movies.filter(m=>m.status==='want').length;
   _hl();
-  const v = {schedule:renderSchedule, mine:renderMine}[state.view] || (()=>renderGrid('all'));
+  const v = {schedule:renderSchedule, mine:renderMine, fest:renderFest}[state.view] || (()=>renderGrid('all'));
   const y=window.scrollY; $('#main').innerHTML = v(); tick(); if(y) window.scrollTo(0,y);
   initVenueMap();
 }
@@ -522,10 +523,15 @@ function renderGrid(kind){
     return html + `<div class="empty"><h3>${msg[0]}</h3>${msg[1]}</div>`;
   }
   if(kind==='all' && !filtering){
-    const rec = db.movies.filter(m=>m.recRank).sort((a,b)=>a.recRank-b.recRank);
-    if(rec.length) html += `<h2 class="sec-h">Recommended <span>${rec.length}</span></h2><div class="strip">${rec.map(m=>cardHtml(m, `#${m.recRank}`)).join('')}</div><h2 class="sec-h">All films <span>${list.length}</span></h2>`;
+    html += `<h2 class="sec-h">All films <span>${list.length}</span></h2>`;
   }
   return html + `<div class="grid">${list.map(m=>cardHtml(m)).join('')}</div>`;
+}
+function renderFest(){   // the 20 new films with the strongest festival-circuit record
+  const fc = db.movies.filter(m=>m.fc).sort((a,b)=>a.fc-b.fc);
+  if(!fc.length) return `<div class="empty"><h3>Festival darlings</h3>The list is loading. Refresh the page if it doesn’t appear.</div>`;
+  return `<h1 class="sec-h fest-h">Festival darlings <span>${fc.length}</span></h1><p class="sec-sub">This year’s most-travelled films on the festival circuit – ranked by where they played: Cannes, Venice, Berlin, Toronto, Sundance and more.</p>
+    <div class="grid">${fc.map(m=>cardHtml(m, `#${m.fc} · ${esc(String(m.fcl).split(' · ')[0])}`)).join('')}</div>`;
 }
 const IC = {
   share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>',

@@ -465,6 +465,7 @@ h2.day.sub{margin-top:26px}
 .tg-introic{display:inline-flex;width:52px;height:52px;border-radius:14px;background:var(--brand-tint);color:var(--green);align-items:center;justify-content:center;margin-bottom:8px}.tg-intro .btn,.tg-half .btn{display:block;width:100%;max-width:320px;margin:8px auto 0}
 .tg-res .shr{position:absolute;top:14px;right:56px}.tg-acts .btn svg{width:18px;height:18px;vertical-align:-3px;margin-right:4px}
 @media (max-width:640px){.tg-q{font-size:20px}.tg-pair{gap:6px}.tg-film{padding:6px}.tg-or{font-size:11px}.tg-hook{font-size:13px}.tb-tx span{font-size:13.5px}}
+.sec-sub{margin:-6px 0 14px;color:var(--muted);font-size:14.5px;max-width:640px}.fest-h{font-size:22px;margin-top:8px}
 .snote{font-size:14px;color:var(--muted);margin-top:3px;line-height:1.35}
 .vm .snote{display:block;margin-top:2px}
 .myrate{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:16px;font-weight:600}
