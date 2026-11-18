@@ -482,5 +482,5 @@ h2.day.sub{margin-top:26px}
 #sheet.filt .mseg{margin:10px 16px 2px;max-width:none}
 .fl-foot{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--line)}
 .fl-foot .btn{padding:12px 18px;font-size:16px}
-.ask{text-align:center;padding:8px 4px}.ask h2{margin:0 0 6px}.ask p{color:var(--muted);font-size:16px;margin:0 0 18px}
+.ask{text-align:center;padding:8px 4px}.ask p.gnote{font-size:14px;margin:-8px 0 16px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px}.ask h2{margin:0 0 6px}.ask p{color:var(--muted);font-size:16px;margin:0 0 18px}
 .ask .btn{width:100%;padding:14px;font-size:17px}.ask .btn+.btn{margin-top:10px}

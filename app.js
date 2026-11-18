@@ -919,7 +919,7 @@ function quickSave(mid){ if(!cloud.user) return askSignIn(mid,'want'); const m=f
 function askSignIn(mid,st,sid){
   cloudInit();
   const m=find(mid), back=$('#scrim').classList.contains('open'); const sc=sid&&m?.screenings.find(y=>y.id===sid); cloud.pending = m ? {t:m.title.toLowerCase(), st, sk:sc?skey(sc):''} : null;
-  openModal(`<div class="ask"><h2>${st==='watched'?'Keep track of what you watch':m?'Save films to your watchlist':'Sign in to save your watchlist'}</h2><p>Sign in with Google so your watchlist is saved to your account and works on all your devices.</p><button class="btn primary" onclick="cloudToggle()">Continue with Google</button><button class="btn" onclick="${m&&back?`openDetail('${m.id}')`:'closeModal()'}">Not now</button>${CONSENT_NOTE}</div>`);
+  openModal(`<div class="ask"><h2>${st==='watched'?'Keep track of what you watch':m?'Save films to your watchlist':'Sign in to save your watchlist'}</h2><p>Sign in with Google so your watchlist is saved to your account and works on all your devices.</p><p class="gnote">Google’s window will say <b>iffi26-8579d.firebaseapp.com</b> – that’s the secure Google Firebase service this site uses for sign-in.</p><button class="btn primary" onclick="cloudToggle()">Continue with Google</button><button class="btn" onclick="${m&&back?`openDetail('${m.id}')`:'closeModal()'}">Not now</button>${CONSENT_NOTE}</div>`);
 }
 const slug = t => String(t||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 const ytUrl = m => 'https://www.youtube.com/results?search_query=' + encodeURIComponent(`${m.title} ${m.director||''} trailer`.replace(/\s+/g,' '));
