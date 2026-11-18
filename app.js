@@ -107,6 +107,11 @@ function officialText(){ return window.__OFFICIAL || document.getElementById('of
 const state = { view: 'all', q:'', showPast:false, onlyMine:false, venue:'', section:'', tag:'', mineTab:'want' };
 try{ Object.assign(state, JSON.parse(localStorage.getItem(KEY+'-ui')||'{}'), {q:'', view:'all'}); }catch(e){}
 for(const m of db.movies||[]) for(const x of m.screenings||[]){ if(x.booked) x.going=true; delete x.booked; delete x.seat; }
+let _fest0;
+const festStart = () => _fest0 ??= Math.min(...allScreenings().map(x=>x.start.getTime()).filter(Boolean), Infinity);
+const festOn = () => now().getTime() >= festStart() - 2*3600e3;   // shows begin (2 h ahead, like "Now")
+const guestNote = () => cloud.user ? '' : `<div class="gnote"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l7 3v5c0 4.5-3 8-7 9-4-1-7-4.5-7-9v-5z"/></svg><span>Saved on this phone. <b>Sign in</b> to keep it on all your devices.</span><button class="btn sm" onclick="askSignIn()">Sign in</button></div>`;
+const playNudge = () => `<div class="empty"><h3>Not sure where to start?</h3>Play This or That – pick between films you know, and get a festival top 10 for your taste.<div style="margin-top:14px"><button class="btn primary" onclick="openTaste()">Play This or That</button></div></div>`;
 const hasShows = () => db.movies.some(m=>(m.screenings||[]).some(s=>s.date));
 function setView(v, fromRoute){ const ch=state.view!==v; state.view=v; persistUI(); if(!fromRoute){ const u=ROOT+(VIEW_PATH[v]||''); if(location.href!==u) history.pushState({view:v},'',u); } syncTitle(); if(ch) window.scrollTo(0,0); render(); }
 /* ---------- URLs ----------
@@ -333,7 +338,7 @@ function filterBar(extra='', right=''){
   const sel = ['genre','country','section','venue'].filter(k=>state[k]);
   const X = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
   return `<div class="filters"><div class="frow">
-    ${hasShows()?`<button class="fpill now ${state.now?'set':''}" aria-pressed="${!!state.now}" onclick="state.now=!state.now;render()" title="Showing now or starting in the next 2 hours"><span class="dot"></span>Now</button>`:''}
+    ${hasShows()&&festOn()?`<button class="fpill now ${state.now?'set':''}" aria-pressed="${!!state.now}" onclick="state.now=!state.now;render()" title="Showing now or starting in the next 2 hours"><span class="dot"></span>Now</button>`:''}
     <button class="fpill" aria-haspopup="dialog" onclick="openFilters(this)"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Filters${sel.length?` · ${sel.length}`:''}</button>
     ${sel.map(k=>`<button class="fpill set x" aria-label="Remove ${esc(state[k])}" onclick="state.${k}='';render()">${esc(k==='venue'?(venueById(state.venue)?.name||state.venue):state[k])}${X}</button>`).join('')}
   </div></div>`;
@@ -384,7 +389,6 @@ function timeChip(x, cl, n, withDate){
   return `<button class="${cls}" aria-pressed="${!!x.s.going}" aria-label="${esc(lab)}" onclick="event.stopPropagation();${act}">${withDate?`<small class="tdate">${fmtShort(x.start)}</small>`:''}<b>${fmtTime(x.start)}</b><span>${esc(place)}</span>${x.s.going?'<i>✓ Going</i>':live?'<i>Now showing</i>':past&&x.m.status!=='watched'?'<i>Mark watched</i>':cl.has(x.s.id)?'<i>Clash</i>':''}</button>`;
 }
 function pickTime(mid, sid){
-  if(!cloud.user) return askSignIn(mid, 'want', sid);
   toggleS(mid, sid, 'going');
   const s = find(mid)?.screenings.find(y=>y.id===sid);
   if(s?.going && !clashes().has(sid)) toast('Added to My Plan');
@@ -449,7 +453,6 @@ function renderScheduleTime(){
 }
 function renderPlan(){
   const n = now(), cl = clashes(), today = localISO(n);
-  if(!cloud.user) return `<div class="empty ask" style="max-width:440px;margin:24px auto"><h2>Plan your festival</h2><p>Sign in, then tap any showtime in All shows to add it here. Your plan works on all your devices.</p><button class="btn primary" onclick="askSignIn()">Sign in</button><button class="btn" onclick="state.smode='time';render()">Browse all shows</button></div>`;
   const mine = allScreenings().filter(x => x.s.going && x.m.status!=='watched');
   const hidden = state.showPast ? 0 : mine.filter(x=>x.end<=n).length;
   const list = state.showPast ? mine : mine.filter(x=>x.end>n);
@@ -465,8 +468,9 @@ function renderPlan(){
       </div>
     </div>`;
   html += earlierLink(hidden);
+  if(mine.length) html = guestNote() + html;
   if(!list.length){
-    html += `<div class="empty"><h3>Your plan is empty</h3>Open <b>All shows</b> and tap a showtime to add it here.<div style="margin-top:14px"><button class="btn primary" onclick="state.smode='time';render()">Browse all shows</button></div></div>`;
+    if(!db.movies.some(m=>m.status==='want'||m.status==='watched')) html += playNudge(); else html += `<div class="empty"><h3>Your plan is empty</h3>Open <b>All shows</b> and tap a showtime to add it here.<div style="margin-top:14px"><button class="btn primary" onclick="state.smode='time';render()">Browse all shows</button></div></div>`;
   } else {
     let day='';
     for(const x of list){
@@ -515,11 +519,13 @@ function renderGrid(kind){
   const filtering = state.q.trim() || (kind==='all' && ['genre','country','section','now','venue'].some(k=>state[k]));
   let list = db.movies.filter(m => (kind==='all' ? fOK(m) : m.status===kind) && matches(m));
   if(kind==='watched') list.sort((a,b)=>(b.watchedOn||'').localeCompare(a.watchedOn||'') || byTitle(a,b));
-  else list.sort(kind==='want' && hasShows() ? byNext : byTitle);
-  let html = kind==='all' ? (filtering ? '' : tasteBanner()) + filterBar() + (filtering ? '' : tasteReady()) : '';
+  else list.sort((kind==='want'||kind==='all') && hasShows() ? byNext : byTitle);
+  let html = kind==='all' ? (filtering ? '' : `<p class="dhero"><b>Your free guide to IFFI Goa 2026</b> · 20–28 Nov · ${officialList().length} films, every showtime</p>` + tasteBanner()) + filterBar() + (filtering ? '' : tasteReady()) : '';
   if(!list.length){
-    if(state.now) return html + `<div class="empty"><h3>Nothing screening right now</h3>No shows are on or starting in the next 2 hours.</div>`;
+    if(state.now){ const nx = allScreenings().filter(x=>x.start>now()).sort((a,b)=>a.start-b.start)[0];
+      return html + `<div class="empty"><h3>Nothing screening right now</h3>No shows are on or starting in the next 2 hours.${nx?`<div style="margin-top:8px">Next up: <a href="${filmURL(nx.m)}" onclick="event.preventDefault();openDetail('${nx.m.id}')"><b>${esc(nx.m.title)}</b></a> · ${fmtShort(nx.start)} · ${fmtTime(nx.start)}</div>`:''}<div style="margin-top:14px"><button class="btn primary" onclick="state.now=false;render()">Show all films</button></div></div>`; }
     if(filtering) return html + `<div class="empty"><h3>No films match</h3>Try another search or filter.</div>`;
+    if(kind==='want' && !db.movies.some(m=>m.status==='watched')) return html + playNudge();
     const msg = {want:['Nothing saved yet','Tap the bookmark on any film to save it here.'], watched:['No films watched yet','Open a film and tap Watched, then give it stars.'], all:['No films yet','The film list is loading. Refresh the page if it doesn’t appear.']}[kind];
     return html + `<div class="empty"><h3>${msg[0]}</h3>${msg[1]}</div>`;
   }
@@ -585,15 +591,14 @@ function openSharedList(code, by){
 }
 function saveSharedList(code, by){
   const films = sharedFilms(code);
-  if(!cloud.user){ cloud.pendingList = [code, by]; return askSignIn(); }
   let k=0; for(const m of films) if(m.status!=='want' && m.status!=='watched'){ m.status='want'; k++; }
   save(); render(); openSharedList(code, by); toast(k ? `Saved ${k} film${k>1?'s':''} to My Watchlist` : 'Already in your watchlist');
 }
 function renderMine(){
-  if(!cloud.user){ cloudInit(); } if(!cloud.user) return `<div class="empty ask" style="max-width:420px;margin:30px auto"><h2>Your watchlist lives here</h2><p>Sign in with Google to save films and keep track of what you’ve watched – on any device.</p><button class="btn primary" onclick="cloudToggle()">Continue with Google</button>${CONSENT_NOTE}</div>`;
+  if(!cloud.user) cloudInit();
   const nw = db.movies.filter(m=>m.status==='want').length, nd = db.movies.filter(m=>m.status==='watched').length;
   const t = state.mineTab==='watched' ? 'watched' : 'want';
-  return `<div class="mseg" role="tablist"><button role="tab" aria-selected="${t==='want'}" class="${t==='want'?'on':''}" onclick="state.mineTab='want';persistUI();render()">To watch<small>${nw}</small></button><button role="tab" aria-selected="${t==='watched'}" class="${t==='watched'?'on':''}" onclick="state.mineTab='watched';persistUI();render()">Watched<small>${nd}</small></button></div>` + (t==='want' && nw ? `<div class="sharebar"><span>${nw} film${nw>1?'s':''} you want to see</span><button class="pillbtn" onclick="shareWatchlist()">${IC.share}Share</button></div>` : '') + renderGrid(t);
+  return `<div class="mseg" role="tablist"><button role="tab" aria-selected="${t==='want'}" class="${t==='want'?'on':''}" onclick="state.mineTab='want';persistUI();render()">To watch<small>${nw}</small></button><button role="tab" aria-selected="${t==='watched'}" class="${t==='watched'?'on':''}" onclick="state.mineTab='watched';persistUI();render()">Watched<small>${nd}</small></button></div>` + ((nw||nd) ? guestNote() : '') + (t==='want' && nw ? `<div class="sharebar"><span>${nw} film${nw>1?'s':''} you want to see</span><button class="pillbtn" onclick="shareWatchlist()">${IC.share}Share</button></div>` : '') + renderGrid(t);
 }
 
 const statusLabel = m => m.status==='watched' ? 'Watched' : m.status==='want' ? 'Watchlist' : '';
@@ -849,26 +854,33 @@ function tgResults(){
   const pals = dials.map(([d,v])=>`<div class="tg-dial"><span class="${v>0?'on':''}">${TG_DIAL[d][0]}</span><i><b style="left:${(1-v)/2*100}%"></b></i><span class="${v<0?'on':''}">${TG_DIAL[d][1]}</span></div>`).join('');
   const ns = m => { const x=nextScreening(m); return x ? fmtShort(x.start)+' · '+fmtTime(x.start) : ''; };
   const used={};
-  const allIn = list.every(x=>x.m.status==='want'||x.m.status==='watched') && cloud.user;
+  const allIn = list.every(x=>x.m.status==='want'||x.m.status==='watched');
   openModal(`<div class="tg tg-res">
     <button class="shr" aria-label="Invite friends to play" title="Invite friends" onclick="tgShare()">${IC.share}</button>
     <h2>Your festival top 10</h2>
     <p class="tg-sub">From ${picked} pick${picked>1?'s':''}. These lean towards your taste, with some variety and at least two festival must-sees mixed in.</p>
     ${pals?`<div class="tg-pal"><b>Your taste palette</b>${pals}</div>`:''}
-    <ol class="tg-list">${list.map(x=>`<li><button onclick="window._tgBack=1;openDetail('${x.m.id}')">
+    <ol class="tg-list">${list.map(x=>`<li${nextScreening(x.m)?' class="hg"':''}><button onclick="window._tgBack=1;openDetail('${x.m.id}')">
       <span class="tg-mini">${poster(x.m,true)}</span>
       <span class="tg-li">${x.m.acc?`<span class="tg-must">★ Must-see · ${esc(x.m.acc)}</span>`:''}<b>${esc(x.m.title)}</b><small>${esc([x.m.genre, TG_FIRST(x.m.country), x.m.runtime?x.m.runtime+' min':''].filter(Boolean).join(' · '))}</small>${ns(x.m)?`<small>Next: ${ns(x.m)}</small>`:''}<span class="tg-why">${esc(tgReason(x, used))}</span></span>
-      ${x.m.status==='want'?'<span class="tg-saved" aria-label="In your watchlist">✓</span>':''}</button></li>`).join('')}</ol>
+      ${x.m.status==='want'?'<span class="tg-saved" aria-label="In your watchlist">✓</span>':''}</button>${tgGoBtn(x.m)}</li>`).join('')}</ol>
     <div class="tg-acts">
-      ${allIn?'<span class="tg-ok">✓ All in your watchlist</span>':`<button class="btn primary" onclick="tgSaveAll()">${cloud.user?'Save all 10 to my watchlist':'Sign in to save your top 10 – free'}</button>`}
+      ${allIn?'<span class="tg-ok">✓ All in your watchlist</span>':`<button class="btn primary" onclick="tgSaveAll()">Save all 10 to my watchlist</button>`}
       <button class="btn" onclick="tgShare()">${IC.share} Invite friends to play</button>
       ${G.p.length<TG_PAIRS.length?`<button class="btn" onclick="tgMore()">Sharpen it: 10 more pairs</button>`:''}
       <button class="linkbtn" onclick="openTaste()">Start over</button>
     </div>
   </div>`, ROOT+'play/');
 }
+function tgGoBtn(m){
+  const x = nextScreening(m); if(!x) return '';
+  const s = x.s||x, on = !!s.going;
+  return `<button class="tg-go ${on?'on':''}" aria-pressed="${on}" aria-label="${on?'Going':'Add to My Plan'}: ${esc(m.title)}, ${fmtShort(x.start)} ${fmtTime(x.start)}" onclick="tgGo('${m.id}','${s.id}')">${on?'✓ Going':'+ Going'}</button>`;
+}
+function tgGo(mid,sid){ const m=find(mid), s=m?.screenings.find(y=>y.id===sid); if(!s) return;
+  s.going=!s.going; if(s.going && m.status!=='watched') m.status='want'; save(); render(); tgResults();
+  toast(s.going?(cloud.user?'Added to My Plan':'Added to My Plan on this phone · Sign in to keep it everywhere'):'Removed from My Plan'); }
 function tgSaveAll(after){
-  if(!cloud.user){ try{ localStorage.setItem(TG_KEY+'-save','1'); }catch(e){} askSignIn(); return; }
   const saved=tgLoad(); if(saved) G.p=saved.p.slice();
   let n=0; for(const x of tgRecommend(G.p).list) if(x.m.status==='none'||!x.m.status){ x.m.status='want'; n++; }
   save(); render(); toast(n ? `Added ${n} film${n>1?'s':''} to My Watchlist` : 'Already in your watchlist');
@@ -884,7 +896,7 @@ function tasteBanner(){   // on top of Discover until someone has played once
 }
 function tasteReady(){   // after playing: signed-in people find it in the profile menu; guests get a slim reminder to save it
   if(!tgLoad() || cloud.user) return '';
-  return `<button class="tready" onclick="openTaste(true)">${TG_IC}<span><b>Your festival top 10 is ready</b> · sign in to save it</span><span aria-hidden="true">›</span></button>`;
+  return `<button class="tready" onclick="openTaste(true)">${TG_IC}<span><b>Your festival top 10</b> · tap to see it</span><span aria-hidden="true">›</span></button>`;
 }
 
 /* ---------- actions ---------- */
@@ -902,7 +914,6 @@ function quickWatched(mid,sid){
   save(); render(); openDetail(mid); toast('Logged! Give it a rating ★');
 }
 function setStatus(mid,st){
-  if(!cloud.user) return askSignIn(mid,st);
   const m=find(mid);
   if(st==='priority'){ m.priority=!m.priority; }
   else {
@@ -911,12 +922,12 @@ function setStatus(mid,st){
   }
   save(); render(); openDetail(mid);
 }
-function setRating(mid,r){ if(!cloud.user) return askSignIn(mid,'watched'); const m=find(mid); m.rating = m.rating===r ? 0 : r; if(m.status!=='watched'){ m.status='watched'; m.watchedOn=m.watchedOn||localISO();} save(); render(); openDetail(mid); }
+function setRating(mid,r){ const m=find(mid); m.rating = m.rating===r ? 0 : r; if(m.status!=='watched'){ m.status='watched'; m.watchedOn=m.watchedOn||localISO();} save(); render(); openDetail(mid); }
 function toggleLike(mid){ const m=find(mid); m.liked=!m.liked; save(); render(); openDetail(mid); }
-function quickSave(mid){ if(!cloud.user) return askSignIn(mid,'want'); const m=find(mid); if(!m) return; m.status = m.status==='want' ? 'none' : 'want'; save();
+function quickSave(mid){ const m=find(mid); if(!m) return; m.status = m.status==='want' ? 'none' : 'want'; save();
   if(state.view==='all'){ const on=m.status==='want'; document.querySelectorAll(`.bm[data-mid="${mid}"]`).forEach(b=>{ b.classList.toggle('on',on); b.setAttribute('aria-label', on?'Remove from my watchlist':'Save to my watchlist'); }); $('#n-mine').textContent = db.movies.filter(x=>x.status==='want').length; }
   else render();
-  toast(m.status==='want'?'Saved to My Watchlist':'Removed from My Watchlist'); }
+  toast(m.status==='want'?(cloud.user?'Saved to My Watchlist':'Saved on this phone · Sign in to keep it everywhere'):'Removed from My Watchlist'); }
 function askSignIn(mid,st,sid){
   cloudInit();
   const m=find(mid), back=$('#scrim').classList.contains('open'); const sc=sid&&m?.screenings.find(y=>y.id===sid); cloud.pending = m ? {t:m.title.toLowerCase(), st, sk:sc?skey(sc):''} : null;
@@ -985,7 +996,6 @@ function openDetail(id){
       ${m.director?`<div class="dmeta">Directed by <b>${esc(m.director)}</b></div>`:''}
       ${m.section?`<div class="dmeta">${esc(m.section)}</div>`:''}
       <div class="dmeta wlc" data-f="${wlSlug(m)}" hidden></div>
-      ${confirmInfo(m)?`<span class="tag booked" style="margin-top:6px">✓ Screening confirmed</span>`:''}
     </div>
   </div>
   ${m.status==='watched'
@@ -993,18 +1003,17 @@ function openDetail(id){
     : `${going
       ? `<button class="pbtn going" onclick="document.getElementById('dshows')?.scrollIntoView({behavior:'smooth',block:'start'})">${I('<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>')}<span><b>Going</b> · ${fmtShort(dt(going))} · ${fmtTime(dt(going))}${going.venue?' · '+esc(going.venue):''}</span></button>`
       : `<button class="pbtn ${m.status==='want'?'on':''}" aria-pressed="${m.status==='want'}" onclick="setStatus('${m.id}','want')">${I(m.status==='want'?'<path d="M5 12.5l4.5 4.5L19 7.5"/>':'<path d="M6.5 3.5h11v17l-5.5-4-5.5 4z"/>')}<span>${m.status==='want'?'In my watchlist':'Want to see'}</span></button>`}
-      <div class="seenrow"><button class="linkbtn" onclick="setStatus('${m.id}','watched')">Already seen it?</button></div>`}
+      ${festOn()?`<div class="seenrow"><button class="linkbtn" onclick="setStatus('${m.id}','watched')">Already seen it?</button></div>`:''}`}
   ${m.synopsis||extra?`<div class="dsyn"><p class="syn clamp">${esc(m.synopsis||'')}</p><div class="dextra" hidden>${extra}</div><button class="linkbtn rmore" onclick="const d=this.parentNode;const o=d.classList.toggle('open');d.querySelector('.dextra').hidden=!o;this.textContent=o?'Show less':'Read more'">Read more</button></div>`:''}
   ${ratingsBlock(m)}
   ${m.status==='watched' ? `<div class="myrate"><span>Your rating</span><div class="rate">${starsHtml}</div></div>` : ''}
-  ${scr.length?'<div id="dshows" style="font-weight:700;margin:14px 0 4px;scroll-margin-top:12px">Showtimes</div>':''}
+  ${scr.length?'<div id="dshows" style="font-weight:700;margin:14px 0 0;scroll-margin-top:12px">Showtimes</div><div class="srcline">Times from the official IFFI 2026 schedule</div>':''}
   <div>${scr.length ? scr.map(s=>{
     const st=dt(s), en=endOf(m,s), past=en<n;
     return `<div class="scr" style="${past?'opacity:.55':''}">
       <div><b>${fmtShort(st)}, ${fmtTime(st)}</b> <span style="color:var(--muted)">– ${fmtTime(en)}</span><br>
         <span style="color:var(--muted);font-size:15px">📍 ${s.venue?(venueOf(s.venue)?`<a class="vlink" href="${venueURL(venueOf(s.venue))}" onclick="event.preventDefault();openVenue('${venueOf(s.venue).id}')">${esc(s.venue)}</a>`:`<a class="vlink" href="${mapUrl(s.venue)}" target="_blank" rel="noopener">${esc(s.venue)}</a>`):'Venue TBA'}${s.screen?' · '+esc(s.screen):''}${s.seat?' · Seat '+esc(s.seat):''}</span>
         ${s.note?`<div class="snote">${esc(s.note)}</div>`:''}
-        <span style="font-size:14px;margin-left:6px">${s.source?srcLink(s.source,'Source'):'<span style="color:var(--muted)">· no source</span>'}</span>
         <div>${s.going?'<span class="tag plan">Going</span>':''}${cl.has(s.id)?'<span class="tag clash">Clash</span>':''}${m.watchedAt===s.id?'<span class="tag booked">Watched here</span>':''}</div>
       </div>
       <div class="acts" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${past

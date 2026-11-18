@@ -434,6 +434,11 @@ h2.day.sub{margin-top:26px}
 .sharelink{width:100%;font:inherit;font-size:14px;padding:11px 12px;border:1px solid #c9c9c9;border-radius:10px;margin:0 0 12px;color:var(--text);background:#f7f7f7}
 .grid>.card{content-visibility:auto;contain-intrinsic-size:auto 330px}
 .fgroup{content-visibility:auto;contain-intrinsic-size:auto 170px}
+.dhero{font-size:15px;color:var(--muted);margin:0 0 12px;line-height:1.4}.dhero b{color:var(--text)}
+.gnote{display:flex;align-items:center;gap:10px;background:var(--brand-tint);border:1px solid var(--brand-line);border-radius:10px;padding:8px 10px 8px 12px;margin:0 0 14px;font-size:14px}.gnote span{flex:1}.gnote .ic{flex:none;width:18px;height:18px}
+.srcline{font-size:13px;color:var(--muted);margin:2px 0 6px}
+.tg-list li{position:relative}.tg-list li.hg>button:first-child{padding-bottom:44px}
+.tg-go{position:absolute;right:9px;bottom:9px;z-index:6;cursor:pointer;font-size:13px;padding:6px 10px;border-radius:999px;border:1px solid var(--brand-line);background:var(--brand-tint);color:var(--text);font-weight:600;white-space:nowrap}.tg-go.on{background:var(--brand);color:#fff;border-color:var(--brand)}
 .tbanner{display:flex;align-items:center;gap:12px;background:var(--brand-tint);border:1px solid var(--brand-line);border-radius:12px;padding:12px 10px 12px 14px;margin:0 0 16px}
 .tb-ic{color:var(--green);flex:0 0 auto;display:flex}.tb-tx{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.35}.tb-tx b{font-size:16px}.tb-tx span{color:var(--muted);font-size:14.5px}
 .tready{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--brand-tint);border:1px solid var(--brand-line);border-radius:10px;padding:9px 12px;margin:0 0 14px;color:var(--text);font-size:14.5px;cursor:pointer}.tready svg{color:var(--green);flex:0 0 auto;width:18px;height:18px}.tready span:nth-child(2){flex:1}.tready span:last-child{color:var(--green);font-size:20px;line-height:1}
@@ -456,8 +461,8 @@ h2.day.sub{margin-top:26px}
 .tg-dial{display:grid;grid-template-columns:1fr 90px 1fr;align-items:center;gap:10px;font-size:13.5px;color:var(--muted)}.tg-dial span:last-child{text-align:left}.tg-dial span:first-child{text-align:right}.tg-dial .on{color:var(--text);font-weight:600}
 .tg-dial i{position:relative;height:4px;border-radius:2px;background:var(--line)}.tg-dial i b{position:absolute;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:var(--green)}
 .tg-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;counter-reset:tg}
-.tg-list button{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:8px;cursor:pointer;position:relative}
-.tg-list li{counter-increment:tg}.tg-list button::before{content:counter(tg);position:absolute;left:3px;top:3px;z-index:5;box-shadow:0 0 0 2px var(--bg);background:var(--green);color:#fff;font-size:12px;font-weight:700;min-width:20px;height:20px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+.tg-list li>button:first-child{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:8px;cursor:pointer;position:relative}
+.tg-list li{counter-increment:tg}.tg-list li>button:first-child::before{content:counter(tg);position:absolute;left:3px;top:3px;z-index:5;box-shadow:0 0 0 2px var(--bg);background:var(--green);color:#fff;font-size:12px;font-weight:700;min-width:20px;height:20px;border-radius:10px;display:flex;align-items:center;justify-content:center}
 .tg-mini{flex:0 0 58px}.tg-mini .poster{border-radius:6px}.tg-li{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}.tg-li b{font-size:16px;line-height:1.25}.tg-li small{color:var(--muted);font-size:13.5px}
 .tg-why{font-size:13.5px;color:var(--green);font-weight:600;margin-top:2px}.tg-saved{color:var(--green);font-weight:700}.tg-must{align-self:flex-start;font-size:12px;font-weight:700;color:var(--gold);background:#fbf3df;border-radius:6px;padding:1px 7px;margin-bottom:3px}
 .tg-acts{display:flex;flex-direction:column;align-items:stretch;gap:8px;margin-top:14px}.tg-acts .linkbtn{align-self:center}.tg-ok{text-align:center;color:var(--green);font-weight:600}
